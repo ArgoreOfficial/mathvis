@@ -45,8 +45,6 @@ local function lerp(a, b, t)
 	return a + (b - a) * t
 end
 
-
-
 local function draw_graph_scale( _info )
 
     local pos     = _info.pos     or { 16,   16 }
@@ -91,6 +89,36 @@ local function sin_norm(_v)
     return math.sin(_v) * 0.5 + 0.5
 end
 
+local function clamp(_v, _min, _max)
+    return math.max( math.min( _v, _max ), _min )
+end
+
+function draw_func_graph(_func, _params, _pos_x, _pos_y, _width, _height, _resolution)
+    local px_w = _width - 1
+    local px_h = _height - 1
+    
+    local data = love.image.newImageData(_width,_height)
+    
+    local max = 3
+    for i=0, _resolution do
+        local xval = (i / _resolution) * max
+        local v = _func( xval, unpack(_params) )
+
+        local x = (xval / max) * _width
+        local y = px_h - (v * _height)
+
+        local in_x_range = (x >= 0 and x < _width)
+        local in_y_range = (y >= 0 and y < _height)
+
+        if in_x_range and in_y_range then
+            data:setPixel(x,y,1,1,1,1)
+        end
+    end
+    
+    local image = love.graphics.newImage(data)
+    love.graphics.draw(image, _pos_x, _pos_y)
+end
+
 local t = 0.0
 local nval = 1.0
 local Kval = 1.0
@@ -123,7 +151,8 @@ function love.draw()
         }
     }
 
-    draw_graph( graph, 32, 32, w, 256)
+    draw_func_graph( hill, {Kval, nval}, 32, 32, w, 256, 4096 )
+    --draw_graph( graph, 32, 32, w, 256)
     draw_graph_scale( graph_scale_info )
 
 end
