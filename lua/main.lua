@@ -83,7 +83,8 @@ local function draw_segments_y( _y_min, _y_max, _x, _v, _width, _margin, _str )
         draw_text_right(_str, _x - _margin, y )
     end
 end
-function tablelength(_t)
+
+local function table_length(_t)
     local count = 0
     for _ in pairs(_t) do count = count + 1 end
     return count
@@ -126,7 +127,7 @@ local function frame_xy( _info )
         position = {pos[1] or 0, pos[2] or 0},
         size = {
             width + padding + offset_x, 
-            height + padding*2 + margin + (text_height * (tablelength(params) + 1))
+            height + padding*2 + margin + (text_height * (table_length(params) + 1))
         },
 
         plot_position = {left + padding, top + padding},
@@ -147,21 +148,31 @@ local function frame_xy( _info )
             local sub_right = lerp(posx, posx+width, (i+1) / segs_x)
     
             for o = 0, sub_segs_x do
-                local sub_v = o / segs_x
-                draw_segments_x(sub_left, sub_right, bottom, sub_v, margin, 5)
+                local sub_v = o / (sub_segs_x+1)
+                draw_segments_x(sub_left, sub_right, bottom, sub_v, 5, margin)
             end
         end
     end
 
     for i = 0, segs_y do
         local str = string.format("%.2f", lerp(y_range[1], y_range[2], i / segs_y))
-        draw_segments_y(posy + height, posy, left, i / segs_y, 8, margin, str)
+        draw_segments_y(posy+height, posy, left, i / segs_y, 8, margin, str)
+
+        if i < segs_y then
+            local sub_top    = lerp(posy+height, posy, i     / segs_y)
+            local sub_bottom = lerp(posy+height, posy, (i+1) / segs_y)
+    
+            for o = 0, sub_segs_y do
+                local sub_v = o / (sub_segs_y+1)
+                draw_segments_y(sub_top, sub_bottom, left, sub_v, 5, margin)
+            end
+        end
     end
    
     local param_offset = 1
     for i, v in pairs(params) do
         local str = i .. "=" .. tostring(v)
-        local text_height = love.graphics.getFont():getHeight( str )
+        local text_height = love.graphics.getFont():getHeight(str)
         love.graphics.print(str, posx, bottom + (param_offset * text_height) + 5)
         param_offset = param_offset + 1
     end
@@ -266,31 +277,19 @@ function love.update(_dt)
     nval = sin_norm(t) * 14.0 + 1.0
 end
 
-local invert = false
-local width  = 512
-local height = 256
-
-local window_width = 256
-local window_height = 256
+local pad = 16
 
 function love.draw()
     love.graphics.clear()
     love.graphics.setColor(1,1,1,1)
     
-    if invert then
-        love.graphics.rectangle("fill", 16, 16, width + 32, 256 + 64 )
-        love.graphics.setColor(0,0,0,1)
-    end
-
-    local pos = {16,16}
-    
     local region = frame_xy({
-        pos     = pos,
-        size    = { width, 256 },
-        x_range = {   0.0, 3.0 },
-        y_range = {   0.0, 1.0 },
-        grid    = { 10, 6 },
-        subgrid = { 10, 3 },
+        pos     = { pad, pad },
+        size    = { 500, 300 },
+        x_range = { 0.0, 3.0 },
+        y_range = { 0.0, 1.0 },
+        grid    = {  10,  10 },
+        subgrid = {   6,   3 },
         padding = 16,
         params  = {
             ["n"] = nval,
@@ -328,13 +327,11 @@ function love.draw()
         resolution = 512
     })
     
-    local ww = region.size[1] + 32
-    local wh = region.size[2] + 32
+    local ww = region.size[1] + pad*2
+    local wh = region.size[2] + pad*2
+    local window_width, window_height = love.window.getMode()
     local resize = window_width ~= ww or window_height ~= wh
     if resize then 
-        window_width  = ww
-        window_height = wh
-        love.window.setMode(window_width, window_height)
-
+        love.window.setMode(ww, wh)
     end
 end
