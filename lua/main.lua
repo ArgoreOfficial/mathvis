@@ -1,23 +1,6 @@
 
-local concentration = 0.0
-
--- n = count
--- A = receptor
--- B = ligand molecules
--- K = reaction dissociation constant
--- [X] = concentration of chemical species X
-
-local function hill(B, K, n)
-    return (B^n) / (K^n + (B^n))
-end
-
-local function hill2(B, K, n)
-    return (K^n) / (K^n + (B^n))
-end
-
-local function hill_mult(B, K1, n1, K2, n2)
-    return hill(B,K1,n1) * hill2(B,K2,n2)
-end
+require "lua.math"
+local mv = require "lua.mvis"
 
 local function draw_graph(_t, _x, _y, _width, _height )
 
@@ -39,31 +22,6 @@ local function draw_graph(_t, _x, _y, _width, _height )
         last_x = x
         last_y = y
     end
-end
-
-local function draw_text_centre( _text, _pos_x, _pos_y )
-    local font = love.graphics.getFont()
-    local pos_x = _pos_x - font:getWidth (_text) / 2
-    local pos_y = _pos_y - font:getHeight(_text) / 2
-    love.graphics.print( _text, pos_x, pos_y )
-end
-
-local function draw_text_top( _text, _pos_x, _pos_y )
-    local font = love.graphics.getFont()
-    local pos_x = _pos_x - font:getWidth (_text) / 2
-    local pos_y = _pos_y
-    love.graphics.print( _text, pos_x, pos_y )
-end
-
-local function draw_text_right( _text, _pos_x, _pos_y )
-    local font = love.graphics.getFont()
-    local pos_x = _pos_x - font:getWidth (_text)
-    local pos_y = _pos_y - font:getHeight(_text) / 2
-    love.graphics.print( _text, pos_x, pos_y )
-end
-
-local function lerp(a, b, t)
-	return a + (b - a) * t
 end
 
 local function draw_segments_x( _x_min, _x_max, _y, _v, _height, _margin, _str )
@@ -139,36 +97,30 @@ local function frame_xy( _info )
         left,   top+2, 
         width + padding*2 - 2, height + padding*2 - 2)
 
-    for i = 0, segs_x do
-        local str = string.format("%.2f", lerp(x_range[1], x_range[2], i / segs_x))
-        draw_segments_x(posx, posx+width, bottom, i / segs_x, 8, margin, str)
+    mv:ruler({
+        pos_a=vec2(posx,bottom),
+        pos_b=vec2(posx+width,bottom), 
+        num_marks = segs_x, 
+        num_submarks = sub_segs_x, 
+        mark_length = 8, 
+        submark_length = 5,
+        text_format = "%.2f", 
+        text_range = x_range,
+        flip = false
+    })
 
-        if i < segs_x then
-            local sub_left  = lerp(posx, posx+width, i     / segs_x)
-            local sub_right = lerp(posx, posx+width, (i+1) / segs_x)
-    
-            for o = 0, sub_segs_x do
-                local sub_v = o / (sub_segs_x+1)
-                draw_segments_x(sub_left, sub_right, bottom, sub_v, 5, margin)
-            end
-        end
-    end
+    mv:ruler({
+        pos_a=vec2(left,posy+height),
+        pos_b=vec2(left,posy), 
+        num_marks = segs_y, 
+        num_submarks = sub_segs_y, 
+        mark_length = 8, 
+        submark_length = 5,
+        text_format = "%.2f", 
+        text_range = y_range,
+        flip = true
+    })
 
-    for i = 0, segs_y do
-        local str = string.format("%.2f", lerp(y_range[1], y_range[2], i / segs_y))
-        draw_segments_y(posy+height, posy, left, i / segs_y, 8, margin, str)
-
-        if i < segs_y then
-            local sub_top    = lerp(posy+height, posy, i     / segs_y)
-            local sub_bottom = lerp(posy+height, posy, (i+1) / segs_y)
-    
-            for o = 0, sub_segs_y do
-                local sub_v = o / (sub_segs_y+1)
-                draw_segments_y(sub_top, sub_bottom, left, sub_v, 5, margin)
-            end
-        end
-    end
-   
     local param_offset = 1
     for i, v in pairs(params) do
         local str = i .. "=" .. tostring(v)
@@ -241,8 +193,8 @@ function plot_func_line( _info )
     local resolution = _info.resolution or size[1]
     local x_range    = _info.x_range    or { 0.0, 1.0 }
     
-    local pos_x,pos_y = pos[1] or 0, pos[2] or 0
-    local width,height  = size[1] or 256, size[2] or 256
+    local pos_x,pos_y  = pos[1] or 0, pos[2] or 0
+    local width,height = size[1] or 256, size[2] or 256
     local x_range_min,x_range_max = x_range[1] or 0.0, x_range[2] or 1.0
     
     local px_w = width - 1
@@ -278,6 +230,29 @@ function love.update(_dt)
 end
 
 local pad = 16
+
+-- n = count
+-- A = receptor
+-- B = ligand molecules
+-- K = reaction dissociation constant
+-- [X] = concentration of chemical species X
+
+function love.load()
+	love.graphics.setLineStyle( "rough" )
+    love.graphics.setLineWidth( 1 )
+end
+
+local function hill(B, K, n)
+    return (B^n) / (K^n + (B^n))
+end
+
+local function hill2(B, K, n)
+    return (K^n) / (K^n + (B^n))
+end
+
+local function hill_mult(B, K1, n1, K2, n2)
+    return hill(B,K1,n1) * hill2(B,K2,n2)
+end
 
 function love.draw()
     love.graphics.clear()
@@ -327,7 +302,21 @@ function love.draw()
         resolution = 512
     })
     
-    local ww = region.size[1] + pad*2
+    love.graphics.setColor(1,1,1)
+    
+    local len = 200
+    mv:ruler({
+        pos_a=vec2(len+64, len+64),
+        pos_b=vec2(len+64 + math.cos(t) * len, len+64 + math.sin(t) * len), 
+        num_marks = 10, 
+        num_submarks = 1, 
+        mark_length = 7, 
+        submark_length = 4,
+        text_format = "%.2f", 
+        text_range = {0.0, 1.0}
+    })
+
+    local ww = region.size[1] + pad*4
     local wh = region.size[2] + pad*2
     local window_width, window_height = love.window.getMode()
     local resize = window_width ~= ww or window_height ~= wh
