@@ -1,6 +1,6 @@
 
-require "lua.math"
-local mv = require "lua.mvis"
+require "mv_math"
+local mv = require "mv"
 
 local function draw_graph(_t, _x, _y, _width, _height )
 
@@ -221,26 +221,11 @@ function plot_func_line( _info )
     end
 end
 
-local t = 0.0
-local nval = 1.0
-local Kval = 1.0
-function love.update(_dt)
-    t = t + _dt
-    nval = sin_norm(t) * 14.0 + 1.0
-end
-
-local pad = 16
-
 -- n = count
 -- A = receptor
 -- B = ligand molecules
 -- K = reaction dissociation constant
 -- [X] = concentration of chemical species X
-
-function love.load()
-	love.graphics.setLineStyle( "rough" )
-    love.graphics.setLineWidth( 1 )
-end
 
 local function hill(B, K, n)
     return (B^n) / (K^n + (B^n))
@@ -252,6 +237,22 @@ end
 
 local function hill_mult(B, K1, n1, K2, n2)
     return hill(B,K1,n1) * hill2(B,K2,n2)
+end
+
+
+function love.load()
+	love.graphics.setLineStyle( "rough" )
+    love.graphics.setLineWidth( 1 )
+    love.window.setTitle( "GeRNS" )
+end
+
+local pad = 16
+local t = 0.0
+local nval = 1.0
+local Kval = 1.0
+function love.update(_dt)
+    t = t + _dt
+    nval = sin_norm(t) * 14.0 + 1.0
 end
 
 function love.draw()
