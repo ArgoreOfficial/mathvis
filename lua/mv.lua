@@ -77,14 +77,22 @@ function lib:pop_scope()
         return 
     end
 
+    local current_scope = p_scope
     p_scope = p_scope.Parent
     g_depth = g_depth - 1
+
+    return {
+        Left   = current_scope.Left,
+        Right  = current_scope.Right,
+        Top    = current_scope.Top,
+        Bottom = current_scope.Bottom
+    }
 end
 
 function lib:draw_scope(_x,_y,_w,_h)
     local right  = _x + _w
     local bottom = _y + _h
-    push_scope(_x,right,_y,bottom)
+    push_scope(_x-1,right+1,_y-1,bottom+1)
 end
 
 function lib:on_resize(_w,_h)
@@ -265,7 +273,7 @@ function lib:ruler(_info)
         end
     end
 
-    lib:pop_scope()
+    return lib:pop_scope()
 end
 
 function lib:plot_func_line( _info )

@@ -64,26 +64,18 @@ local function frame_xy( _info )
     local right  = left + width + padding * 2
     local bottom = top  + height + padding * 2
 
-    local regions = {
-        position = {pos[1] or 0, pos[2] or 0},
-        size = {
-            width + padding + offset_x, 
-            height + padding*2 + margin + (text_height * (table_length(params) + 1))
-        },
-
-        plot_position = {left + padding, top + padding},
-        plot_size     = {width, height}
-    }
-
     local rect_pos  = vec2(left,top)
     local rect_size = vec2(right - left, bottom - top)
 
     mv:draw_bound_scope(rect_pos, rect_pos+rect_size)
+    
+    mv:draw_bound_scope(rect_pos, rect_pos+rect_size)
     love.graphics.rectangle( "line", rect_pos.X, rect_pos.Y, rect_size.X, rect_size.Y)
+    local draw_area = mv:pop_scope() or {}
 
     mv:ruler({
-        pos_a=vec2(posx,bottom),
-        pos_b=vec2(posx+width,bottom), 
+        pos_a=vec2(posx,draw_area.Bottom),
+        pos_b=vec2(posx+width,draw_area.Bottom), 
         num_marks = segs_x, 
         num_submarks = sub_segs_x, 
         mark_length = 8, 
@@ -94,8 +86,8 @@ local function frame_xy( _info )
     })
 
     mv:ruler({
-        pos_a=vec2(left,posy+height),
-        pos_b=vec2(left,posy), 
+        pos_a=vec2(draw_area.Left, draw_area.Top + padding + height),
+        pos_b=vec2(draw_area.Left, draw_area.Top + padding ), 
         num_marks = segs_y, 
         num_submarks = sub_segs_y, 
         mark_length = 8, 
@@ -120,7 +112,15 @@ local function frame_xy( _info )
         param_offset = param_offset + 1
     end
 
-    mv:pop_scope()
+    local scope_reg = mv:pop_scope() or {}
+
+    local regions = {
+        position = { scope_reg.Left, scope_reg.Right },
+        size = { scope_reg.Right - scope_reg.Left, scope_reg.Bottom - scope_reg.Top },
+        plot_position = {left + padding, top + padding},
+        plot_size     = {width, height}
+    }
+
     return regions
 end
 
@@ -260,25 +260,10 @@ function love.draw()
         resolution = 512
     })
     local tree = mv:end_scope()
-    --mv:display_scopes( tree )
-    
-    love.graphics.setColor(1,1,1)
-    
-    local len = 200
-    
-    mv:ruler({
-        pos_a=vec2(len+64, len+64),
-        pos_b=vec2(len+64 + math.cos(t) * len, len+64 + math.sin(t) * len), 
-        num_marks = 10, 
-        num_submarks = 1, 
-        mark_length = 7, 
-        submark_length = 4,
-        text_format = "%.2f", 
-        text_range = {0.0, 1.0}
-    })
-    
-    local ww = region.size[1] + pad*4
-    local wh = region.size[2] + pad*22
+    mv:display_scopes( tree )
+        
+    local ww = region.size[1] + pad*2
+    local wh = region.size[2] + pad*2
     local window_width, window_height = love.window.getMode()
     local resize = window_width ~= ww or window_height ~= wh
     if resize then 
