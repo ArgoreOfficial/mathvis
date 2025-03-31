@@ -35,7 +35,12 @@ local function draw_scope(_x,_y,_w,_h)
     love.graphics.setColor(r,g,b,a)
 end
 
+local function draw_bound_scope(_v1,_v2,...)
+    draw_scope(unpack(get_bounds(_v1,_v2,...)))
+end
+
 function lib:line(_a,_b)
+    draw_bound_scope(_a,_b)
     love.graphics.line(_a.X, _a.Y, _b.X, _b.Y)
 end
 
@@ -100,14 +105,12 @@ function lib:ruler(_info)
     local submark_dir = norm * submark_length
 
     do -- debug scope
-        local bounds = get_bounds(
+        draw_bound_scope(
             pos_a, 
             pos_a+mark_dir, 
             pos_b,
             pos_b+mark_dir
         )
-
-        draw_scope(unpack(bounds))
     end
 
     for mark=0, num_marks do
