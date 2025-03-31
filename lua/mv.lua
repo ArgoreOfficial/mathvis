@@ -24,46 +24,138 @@ local function get_bounds(_v1,_v2,...)
     }
 end
 
+local function scope(_parent, _left,_right,_top,_bottom)
+    return {
+        Left   = _left,
+        Right  = _right,
+        Top    = _top,
+        Bottom = _bottom,
+        Parent = _parent,
+        Scopes = {}
+    }
+end
+
 local debug_pad = 2
+local p_scopetree = nil 
+local p_scope = nil
+local g_depth = 0
+local g_maxdepth = 0
+
+local function resize_scopes(_scope)
+    if _scope == nil or _scope.Parent == nil then return end -- root
+
+    _scope.Parent.Left = math.min(_scope.Parent.Left, _scope.Left)
+    _scope.Parent.Top = math.min(_scope.Parent.Top, _scope.Top)
+    _scope.Parent.Right = math.max(_scope.Parent.Right, _scope.Right)
+    _scope.Parent.Bottom = math.max(_scope.Parent.Bottom, _scope.Bottom)
+    
+    resize_scopes(_scope.Parent)
+end
+
+local function push_scope(_left,_right,_top,_bottom)
+    if not p_scope then return end
+
+    local new_scope = scope(p_scope, _left, _right, _top, _bottom)
+    table.insert(p_scope.Scopes, new_scope)
+    p_scope = new_scope
+
+    g_depth = g_depth + 1
+    if g_depth > g_maxdepth then 
+        g_maxdepth = g_depth 
+    end
+
+    resize_scopes(p_scope)
+end
+
+function lib:begin_scope(_x,_y)
+    p_scopetree = scope(nil, _x, _x, _y, _y)
+    p_scope = p_scopetree
+end
+
+function lib:pop_scope()
+    if p_scope == nil or p_scope.Parent == nil then 
+        return 
+    end
+
+    p_scope = p_scope.Parent
+    g_depth = g_depth - 1
+end
+
 function lib:draw_scope(_x,_y,_w,_h)
-    if not _DEBUG then return nil end
-
-    -- get state
-    local r, g, b, a = love.graphics.getColor()
-    local canvas = love.graphics.getCanvas()
-
-    -- debug draw
-    love.graphics.setCanvas(debug_canvas)
-    love.graphics.setColor(1,0,0,1)
-    love.graphics.rectangle(
-        "fill",
-        _x - debug_pad - 1,
-        _y - debug_pad,
-        _w + debug_pad * 2 + 1,
-        _h + debug_pad * 2 + 1
-    )
-
-    -- reset state
-    love.graphics.setColor(r,g,b,a)
-    love.graphics.setCanvas(canvas)
+    local right  = _x + _w
+    local bottom = _y + _h
+    push_scope(_x,right,_y,bottom)
 end
 
 function lib:on_resize(_w,_h)
     debug_canvas = love.graphics.newCanvas(_w,_h)
 end
 
-function lib:display_scopes()
-    
-    local canvas = love.graphics.getCanvas()
+local function debug_draw_scope_box(_mode,_left,_right,_top,_bottom)
+    local w = _right - _left
+    local h = _bottom - _top
+    love.graphics.rectangle(
+        _mode,
+        _left,-- - debug_pad - 1,
+        _top,-- - debug_pad,
+        w, -- + debug_pad * 2 + 1,
+        h -- + debug_pad * 2 + 1
+    )
+end
+
+local function debug_draw_scope(_scope, _depth, _y, _maxdepth)
+    if _scope == nil then return end
+
+    -- debug draw
+    love.graphics.setCanvas(debug_canvas)
+    local depth_v = (_depth+1)/(_maxdepth+1)
+    love.graphics.setColor(0.85,0,0.5,depth_v)
+    debug_draw_scope_box("fill",_scope.Left, _scope.Right, _scope.Top, _scope.Bottom)
+    --love.graphics.setColor(1,1,1,1)
+    --debug_draw_scope_box("line",_scope.Left, _scope.Right, _scope.Top, _scope.Bottom)
+
+    local y = _y
+    for i, v in ipairs(_scope.Scopes) do
+        y = y + 8
+        y = debug_draw_scope(v, _depth+1, y, _maxdepth)
+    end
+    return y
+end
+
+function lib:display_scopes(_tree)
     local mode, alphamode = love.graphics.getBlendMode( )
+    local r, g, b, a = love.graphics.getColor()
+    local canvas = love.graphics.getCanvas()
+
+    -- draw
+    love.graphics.setCanvas(debug_canvas)
+    love.graphics.clear(0,0,0,0)
+    debug_draw_scope(_tree.Scope, 0, 0, _tree.MaxDepth)
     
+    -- display
+    love.graphics.setCanvas(canvas)
     love.graphics.setBlendMode("add","premultiplied")
     love.graphics.draw(debug_canvas)
-    love.graphics.setBlendMode(mode,alphamode)
     
-    love.graphics.setCanvas(debug_canvas)
-    love.graphics.clear(0,0,0,0) -- clear debug framebuffer
+    -- reset state
+    love.graphics.setBlendMode(mode,alphamode)
+    love.graphics.setColor(r,g,b,a)
     love.graphics.setCanvas(canvas)
+end
+
+
+function lib:end_scope()
+    local tree = {
+        Scope = p_scopetree,
+        MaxDepth = g_maxdepth
+    }
+
+    p_scopetree = nil
+    p_scope     = nil
+    g_maxdepth  = 0
+    g_depth     = 0
+
+    return tree
 end
 
 function lib:draw_bound_scope(_v1,_v2,...)
@@ -73,6 +165,7 @@ end
 function lib:line(_a,_b)
     lib:draw_bound_scope(_a,_b)
     love.graphics.line(_a.X, _a.Y, _b.X, _b.Y)
+    lib:pop_scope()
 end
 
 function lib:text_centre( _text, _pos_x, _pos_y)
@@ -84,6 +177,7 @@ function lib:text_centre( _text, _pos_x, _pos_y)
 
     lib:draw_scope(pos_x, pos_y, width, height)
     love.graphics.print(_text, pos_x, pos_y)
+    lib:pop_scope()
 end
 
 function lib:text_top( _text, _pos_x, _pos_y )
@@ -95,6 +189,7 @@ function lib:text_top( _text, _pos_x, _pos_y )
 
     lib:draw_scope(pos_x, pos_y, width, height)
     love.graphics.print(_text, pos_x, pos_y)
+    lib:pop_scope()
 end
 
 function lib:text_right( _text, _pos_x, _pos_y )
@@ -106,6 +201,7 @@ function lib:text_right( _text, _pos_x, _pos_y )
 
     lib:draw_scope(pos_x, pos_y, width, height)
     love.graphics.print(_text, pos_x, pos_y)
+    lib:pop_scope()
 end
 
 function lib:ruler(_info)
@@ -168,7 +264,54 @@ function lib:ruler(_info)
             end
         end
     end
+
+    lib:pop_scope()
 end
 
+function lib:plot_func_line( _info )
+    local func       = _info.func
+    local params     = _info.params     or { }
+    local pos        = _info.pos        or {   0,   0 }
+    local size       = _info.size       or { 300, 100 }
+    local resolution = _info.resolution or size[1]
+    local x_range    = _info.x_range    or { 0.0, 1.0 }
+    
+    local pos_x,pos_y  = pos[1] or 0, pos[2] or 0
+    local width,height = size[1] or 256, size[2] or 256
+    local x_range_min,x_range_max = x_range[1] or 0.0, x_range[2] or 1.0
+    
+    local px_w = width - 1
+    local px_h = height - 1
+
+    local function x_of(_v) return lerp(pos_x, pos_x + px_w, _v) end
+    local function y_of(_v) return pos_y + px_h - (_v * px_h) end
+
+    lib:draw_bound_scope(
+        vec2(pos_x,pos_y),
+        vec2(pos_x,pos_y) + vec2(px_w, px_h))
+
+    local real_t = lerp(x_range_min, x_range_max, 0)
+    local last_v = func(real_t, unpack(params))
+    for i=1, resolution do
+        local t = (i / resolution)
+        local last_t = ((i-1) / resolution)
+        real_t = lerp(x_range_min, x_range_max, t)
+        local v = func(real_t, unpack(params))
+        
+        local x = x_of(t)
+        local y = y_of(v)
+        local last_x = x_of(last_t)
+        local last_y = y_of(last_v)
+
+        love.graphics.line( last_x, last_y, x, y )
+        last_v = v
+    end
+
+    lib:pop_scope()
+end
+
+function lib:plot(_mode, _info)
+    if _mode == "line" then lib:plot_func_line(_info) end
+end
 
 return lib

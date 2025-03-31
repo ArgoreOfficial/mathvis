@@ -25,24 +25,6 @@ local function draw_graph(_t, _x, _y, _width, _height )
     end
 end
 
-local function draw_segments_x( _x_min, _x_max, _y, _v, _height, _margin, _str )
-    local x = lerp( _x_min, _x_max, _v )
-    love.graphics.line( x, _y, x, _y - _height )
-
-    if _str then
-        draw_text_top(_str, x, _y + _margin )
-    end
-end
-
-local function draw_segments_y( _y_min, _y_max, _x, _v, _width, _margin, _str )
-    local y = lerp( _y_min, _y_max, _v )
-    love.graphics.line( _x, y, _x + _width, y )
-
-    if _str then
-        draw_text_right(_str, _x - _margin, y )
-    end
-end
-
 local function table_length(_t)
     local count = 0
     for _ in pairs(_t) do count = count + 1 end
@@ -79,8 +61,8 @@ local function frame_xy( _info )
 
     local left   = posx - padding
     local top    = posy - padding
-    local right  = left + width  + padding*2
-    local bottom = top  + height + padding*2
+    local right  = left + width + padding * 2
+    local bottom = top  + height + padding * 2
 
     local regions = {
         position = {pos[1] or 0, pos[2] or 0},
@@ -93,9 +75,8 @@ local function frame_xy( _info )
         plot_size     = {width, height}
     }
 
-    local rect_pos  = vec2(left,top+2)
-    local rect_size = vec2(width  + padding * 2 - 2, 
-                           height + padding * 2 - 2)
+    local rect_pos  = vec2(left,top)
+    local rect_size = vec2(right - left, bottom - top)
 
     mv:draw_bound_scope(rect_pos, rect_pos+rect_size)
     love.graphics.rectangle( "line", rect_pos.X, rect_pos.Y, rect_size.X, rect_size.Y)
@@ -123,19 +104,23 @@ local function frame_xy( _info )
         text_range = y_range,
         flip = true
     })
-
+    
     local param_offset = 1
     for i, v in pairs(params) do
         local str = i .. "=" .. tostring(v)
         local text_height = love.graphics.getFont():getHeight(str)
         local text_width  = love.graphics.getFont():getWidth(str)
-        love.graphics.print(str, posx, bottom + (param_offset * text_height) + 5)
-
+        love.graphics.print(str, 
+            posx, 
+            bottom + (param_offset * text_height) + 5)
+        
         mv:draw_scope(posx, bottom + (param_offset * text_height) + 5, text_width, text_height)
+        mv:pop_scope()
 
         param_offset = param_offset + 1
     end
 
+    mv:pop_scope()
     return regions
 end
 
@@ -151,7 +136,7 @@ local function clamp(_v, _min, _max)
     return math.max( math.min( _v, _max ), _min )
 end
 
-function plot_func( _info )
+local function plot_func( _info )
     local func       = _info.func
     local params     = _info.params     or { }
     local pos        = _info.pos        or {   0,   0 }
@@ -192,42 +177,6 @@ function plot_func( _info )
     love.graphics.draw(image, pos_x, pos_y)
 end
 
-function plot_func_line( _info )
-    local func       = _info.func
-    local params     = _info.params     or { }
-    local pos        = _info.pos        or {   0,   0 }
-    local size       = _info.size       or { 300, 100 }
-    local resolution = _info.resolution or size[1]
-    local x_range    = _info.x_range    or { 0.0, 1.0 }
-    
-    local pos_x,pos_y  = pos[1] or 0, pos[2] or 0
-    local width,height = size[1] or 256, size[2] or 256
-    local x_range_min,x_range_max = x_range[1] or 0.0, x_range[2] or 1.0
-    
-    local px_w = width - 1
-    local px_h = height - 1
-
-    local function x_of(_v) return lerp(pos_x, pos_x + px_w, _v) end
-    local function y_of(_v) return pos_y + px_h - (_v * px_h) end
-
-    local real_t = lerp(x_range_min, x_range_max, 0)
-    local last_v = func(real_t, unpack(params))
-    for i=1, resolution do
-        local t = (i / resolution)
-        local last_t = ((i-1) / resolution)
-        real_t = lerp(x_range_min, x_range_max, t)
-        local v = func(real_t, unpack(params))
-        
-        local x = x_of(t)
-        local y = y_of(v)
-        local last_x = x_of(last_t)
-        local last_y = y_of(last_v)
-
-        love.graphics.line( last_x, last_y, x, y )
-        last_v = v
-    end
-end
-
 -- n = count
 -- A = receptor
 -- B = ligand molecules
@@ -266,6 +215,7 @@ function love.draw()
     love.graphics.clear()
     love.graphics.setColor(1,1,1,1)
     
+    mv:begin_scope(pad+16,pad+16)
     local region = frame_xy({
         pos     = { pad, pad },
         size    = { 500, 300 },
@@ -281,7 +231,7 @@ function love.draw()
     })
     
     love.graphics.setColor(0.5,0.9,0.5)
-    plot_func_line({
+    mv:plot("line", {
         func       = hill,
         params     = { Kval, nval },
         pos        = region.plot_position,
@@ -291,7 +241,7 @@ function love.draw()
     })
 
     love.graphics.setColor(0.9,0.5,0.5)
-    plot_func_line({
+    mv:plot("line", {
         func       = hill2,
         params     = { Kval, nval },
         pos        = region.plot_position,
@@ -301,7 +251,7 @@ function love.draw()
     })
     
     love.graphics.setColor(0.5,0.5,0.9)
-    plot_func_line({
+    mv:plot("line", {
         func       = hill_mult,
         params     = { Kval, nval, 2.0, nval },
         pos        = region.plot_position,
@@ -309,10 +259,13 @@ function love.draw()
         x_range    = { 0.0, 4.0 },
         resolution = 512
     })
+    local tree = mv:end_scope()
+    --mv:display_scopes( tree )
     
     love.graphics.setColor(1,1,1)
     
     local len = 200
+    
     mv:ruler({
         pos_a=vec2(len+64, len+64),
         pos_b=vec2(len+64 + math.cos(t) * len, len+64 + math.sin(t) * len), 
@@ -324,10 +277,8 @@ function love.draw()
         text_range = {0.0, 1.0}
     })
     
-    mv:display_scopes()
-
     local ww = region.size[1] + pad*4
-    local wh = region.size[2] + pad*2
+    local wh = region.size[2] + pad*22
     local window_width, window_height = love.window.getMode()
     local resize = window_width ~= ww or window_height ~= wh
     if resize then 
