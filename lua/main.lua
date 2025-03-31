@@ -1,3 +1,4 @@
+_G._DEBUG = false
 
 require "mv_math"
 local mv = require "mv"
@@ -92,10 +93,12 @@ local function frame_xy( _info )
         plot_size     = {width, height}
     }
 
-    love.graphics.rectangle( 
-        "line", 
-        left,   top+2, 
-        width + padding*2 - 2, height + padding*2 - 2)
+    local rect_pos  = vec2(left,top+2)
+    local rect_size = vec2(width  + padding * 2 - 2, 
+                           height + padding * 2 - 2)
+
+    mv:draw_bound_scope(rect_pos, rect_pos+rect_size)
+    love.graphics.rectangle( "line", rect_pos.X, rect_pos.Y, rect_size.X, rect_size.Y)
 
     mv:ruler({
         pos_a=vec2(posx,bottom),
@@ -125,7 +128,11 @@ local function frame_xy( _info )
     for i, v in pairs(params) do
         local str = i .. "=" .. tostring(v)
         local text_height = love.graphics.getFont():getHeight(str)
+        local text_width  = love.graphics.getFont():getWidth(str)
         love.graphics.print(str, posx, bottom + (param_offset * text_height) + 5)
+
+        mv:draw_scope(posx, bottom + (param_offset * text_height) + 5, text_width, text_height)
+
         param_offset = param_offset + 1
     end
 
@@ -316,12 +323,15 @@ function love.draw()
         text_format = "%.2f", 
         text_range = {0.0, 1.0}
     })
+    
+    mv:display_scopes()
 
     local ww = region.size[1] + pad*4
     local wh = region.size[2] + pad*2
     local window_width, window_height = love.window.getMode()
     local resize = window_width ~= ww or window_height ~= wh
     if resize then 
+        mv:on_resize(ww,wh)
         love.window.setMode(ww, wh)
     end
 end

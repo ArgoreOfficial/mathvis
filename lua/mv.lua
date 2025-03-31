@@ -2,6 +2,8 @@ local lib = {}
 
 require "mv_math"
 
+local debug_canvas = love.graphics.newCanvas(100,100)
+
 local function get_bounds(_v1,_v2,...)
     local min_x = math.min( _v1.X, _v2.X )
     local min_y = math.min( _v1.Y, _v2.Y )
@@ -9,7 +11,7 @@ local function get_bounds(_v1,_v2,...)
     local max_y = math.max( _v1.Y, _v2.Y )
 
     local v_arg = {...}
-    for i,v in ipairs(v_arg) do
+    for _,v in ipairs(v_arg) do
         min_x = math.min( min_x, v.X )
         min_y = math.min( min_y, v.Y )
         max_x = math.max( max_x, v.X )
@@ -23,24 +25,53 @@ local function get_bounds(_v1,_v2,...)
 end
 
 local debug_pad = 2
-local function draw_scope(_x,_y,_w,_h)
+function lib:draw_scope(_x,_y,_w,_h)
+    if not _DEBUG then return nil end
+
+    -- get state
     local r, g, b, a = love.graphics.getColor()
-    love.graphics.setColor(1,0,0,0.3)
+    local canvas = love.graphics.getCanvas()
+
+    -- debug draw
+    love.graphics.setCanvas(debug_canvas)
+    love.graphics.setColor(1,0,0,1)
     love.graphics.rectangle(
         "fill",
-        _x - debug_pad,
+        _x - debug_pad - 1,
         _y - debug_pad,
-        _w + debug_pad * 2,
-        _h + debug_pad * 2)
+        _w + debug_pad * 2 + 1,
+        _h + debug_pad * 2 + 1
+    )
+
+    -- reset state
     love.graphics.setColor(r,g,b,a)
+    love.graphics.setCanvas(canvas)
 end
 
-local function draw_bound_scope(_v1,_v2,...)
-    draw_scope(unpack(get_bounds(_v1,_v2,...)))
+function lib:on_resize(_w,_h)
+    debug_canvas = love.graphics.newCanvas(_w,_h)
+end
+
+function lib:display_scopes()
+    
+    local canvas = love.graphics.getCanvas()
+    local mode, alphamode = love.graphics.getBlendMode( )
+    
+    love.graphics.setBlendMode("add","premultiplied")
+    love.graphics.draw(debug_canvas)
+    love.graphics.setBlendMode(mode,alphamode)
+    
+    love.graphics.setCanvas(debug_canvas)
+    love.graphics.clear(0,0,0,0) -- clear debug framebuffer
+    love.graphics.setCanvas(canvas)
+end
+
+function lib:draw_bound_scope(_v1,_v2,...)
+    lib:draw_scope(unpack(get_bounds(_v1,_v2,...)))
 end
 
 function lib:line(_a,_b)
-    draw_bound_scope(_a,_b)
+    lib:draw_bound_scope(_a,_b)
     love.graphics.line(_a.X, _a.Y, _b.X, _b.Y)
 end
 
@@ -51,7 +82,7 @@ function lib:text_centre( _text, _pos_x, _pos_y)
     local pos_x = math.floor(_pos_x - width / 2)
     local pos_y = math.floor(_pos_y - height / 2)
 
-    draw_scope(pos_x, pos_y, width, height)
+    lib:draw_scope(pos_x, pos_y, width, height)
     love.graphics.print(_text, pos_x, pos_y)
 end
 
@@ -62,7 +93,7 @@ function lib:text_top( _text, _pos_x, _pos_y )
     local pos_x = math.floor(_pos_x - width / 2)
     local pos_y = math.floor(_pos_y)
 
-    draw_scope(pos_x, pos_y, width, height)
+    lib:draw_scope(pos_x, pos_y, width, height)
     love.graphics.print(_text, pos_x, pos_y)
 end
 
@@ -73,7 +104,7 @@ function lib:text_right( _text, _pos_x, _pos_y )
     local pos_x = math.floor(_pos_x - width)
     local pos_y = math.floor(_pos_y - height / 2)
 
-    draw_scope(pos_x, pos_y, width, height)
+    lib:draw_scope(pos_x, pos_y, width, height)
     love.graphics.print(_text, pos_x, pos_y)
 end
 
@@ -104,15 +135,12 @@ function lib:ruler(_info)
     local mark_dir    = norm * mark_length
     local submark_dir = norm * submark_length
 
-    do -- debug scope
-        draw_bound_scope(
-            pos_a, 
-            pos_a+mark_dir, 
-            pos_b,
-            pos_b+mark_dir
-        )
-    end
-
+    lib:draw_bound_scope(
+        pos_a, 
+        pos_a+mark_dir, 
+        pos_b,
+        pos_b+mark_dir)
+    
     for mark=0, num_marks do
         local mark_pos = lerp(pos_a, pos_b, mark/num_marks)
         lib:line(mark_pos, mark_pos + mark_dir)
