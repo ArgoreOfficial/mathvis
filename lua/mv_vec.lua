@@ -32,19 +32,47 @@ function vec3_meta.__div(_vec,_scalar)
 end
 
 function vec3_meta.__add(_lhs,_rhs)
-    return vec3(
-        _lhs.X + _rhs.X, 
-        _lhs.Y + _rhs.Y, 
-        _lhs.Z + _rhs.Z
-    )
+    if type(_lhs) == "number" then
+        return vec3(
+            _lhs + _rhs.X, 
+            _lhs + _rhs.Y, 
+            _lhs + _rhs.Z
+        )
+    elseif type(_rhs) == "number" then
+        return vec3(
+            _lhs.X + _rhs, 
+            _lhs.Y + _rhs, 
+            _lhs.Z + _rhs
+        )
+    else
+        return vec3(
+            _lhs.X + _rhs.X, 
+            _lhs.Y + _rhs.Y, 
+            _lhs.Z + _rhs.Z
+        )
+    end
 end
 
 function vec3_meta.__sub(_lhs,_rhs)
-    return vec3(
-        _lhs.X - _rhs.X, 
-        _lhs.Y - _rhs.Y, 
-        _lhs.Z - _rhs.Z
-    )
+    if type(_lhs) == "number" then
+        return vec3(
+            _lhs - _rhs.X, 
+            _lhs - _rhs.Y, 
+            _lhs - _rhs.Z
+        )
+    elseif type(_rhs) == "number" then
+        return vec3(
+            _lhs.X - _rhs, 
+            _lhs.Y - _rhs, 
+            _lhs.Z - _rhs
+        )
+    else
+        return vec3(
+            _lhs.X - _rhs.X, 
+            _lhs.Y - _rhs.Y, 
+            _lhs.Z - _rhs.Z
+        )
+    end
 end
 
 function vec3_meta.__unm(_vec)
