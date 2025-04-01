@@ -3,6 +3,7 @@ local lib = {}
 require "mv_math"
 
 local debug_canvas = love.graphics.newCanvas(100,100)
+local g_scope_padding = 0
 
 local function get_bounds(_v1,_v2,...)
     local min_x = math.min( _v1.X, _v2.X )
@@ -35,7 +36,6 @@ local function scope(_parent, _left,_right,_top,_bottom)
     }
 end
 
-local debug_pad = 2
 local p_scopetree = nil 
 local p_scope = nil
 local g_depth = 0
@@ -44,9 +44,9 @@ local g_maxdepth = 0
 local function resize_scopes(_scope)
     if _scope == nil or _scope.Parent == nil then return end -- root
 
-    _scope.Parent.Left = math.min(_scope.Parent.Left, _scope.Left)
-    _scope.Parent.Top = math.min(_scope.Parent.Top, _scope.Top)
-    _scope.Parent.Right = math.max(_scope.Parent.Right, _scope.Right)
+    _scope.Parent.Left   = math.min(_scope.Parent.Left,   _scope.Left)
+    _scope.Parent.Top    = math.min(_scope.Parent.Top,    _scope.Top)
+    _scope.Parent.Right  = math.max(_scope.Parent.Right,  _scope.Right)
     _scope.Parent.Bottom = math.max(_scope.Parent.Bottom, _scope.Bottom)
     
     resize_scopes(_scope.Parent)
@@ -67,6 +67,23 @@ local function push_scope(_left,_right,_top,_bottom)
     resize_scopes(p_scope)
 end
 
+-- because pos + size is annoying when we're dealing with Left->Right and Top->Bottom
+function lib:rectangle(_mode, _left, _top, _right, _bottom)
+    _left   = math.floor(_left)
+    _top    = math.floor(_top)
+    _right  = math.floor(_right)
+    _bottom = math.floor(_bottom)
+
+    local size_y = math.floor(_bottom - _top)
+    local size_x = math.floor(_right - _left)
+
+    if _mode == "fill" then
+        love.graphics.rectangle(_mode,_left, _top, size_x + 1, size_y)
+    elseif _mode == "line" then
+        love.graphics.rectangle(_mode, _left + 1, _top, size_x, size_y)
+    end
+end
+
 function lib:begin_scope(_x,_y)
     p_scopetree = scope(nil, _x, _x, _y, _y)
     p_scope = p_scopetree
@@ -74,7 +91,12 @@ end
 
 function lib:pop_scope()
     if p_scope == nil or p_scope.Parent == nil then 
-        return 
+        return { 
+            Left   = 0, PaddedLeft   = 0, 
+            Right  = 0, PaddedRight  = 0, 
+            Top    = 0, PaddedTop    = 0, 
+            Bottom = 0, PaddedBottom = 0 
+        }
     end
 
     local current_scope = p_scope
@@ -82,17 +104,17 @@ function lib:pop_scope()
     g_depth = g_depth - 1
 
     return {
-        Left   = current_scope.Left,
-        Right  = current_scope.Right,
-        Top    = current_scope.Top,
-        Bottom = current_scope.Bottom
+        Left   = current_scope.Left,   PaddedLeft   = current_scope.Left   - g_scope_padding,
+        Right  = current_scope.Right,  PaddedRight  = current_scope.Right  + g_scope_padding,
+        Top    = current_scope.Top,    PaddedTop    = current_scope.Top    - g_scope_padding,
+        Bottom = current_scope.Bottom, PaddedBottom = current_scope.Bottom + g_scope_padding
     }
 end
 
 function lib:draw_scope(_x,_y,_w,_h)
     local right  = _x + _w
     local bottom = _y + _h
-    push_scope(_x-1,right+1,_y-1,bottom+1)
+    push_scope(_x, right, _y, bottom)
 end
 
 function lib:on_resize(_w,_h)
@@ -100,34 +122,23 @@ function lib:on_resize(_w,_h)
 end
 
 local function debug_draw_scope_box(_mode,_left,_right,_top,_bottom)
-    local w = _right - _left
-    local h = _bottom - _top
-    love.graphics.rectangle(
-        _mode,
-        _left,-- - debug_pad - 1,
-        _top,-- - debug_pad,
-        w, -- + debug_pad * 2 + 1,
-        h -- + debug_pad * 2 + 1
-    )
+    lib:rectangle(_mode, _left, _top, _right, _bottom)
 end
 
-local function debug_draw_scope(_scope, _depth, _y, _maxdepth)
+local function debug_draw_scope(_scope, _depth, _maxdepth)
     if _scope == nil then return end
 
     -- debug draw
-    love.graphics.setCanvas(debug_canvas)
     local depth_v = (_depth+1)/(_maxdepth+1)
+    
     love.graphics.setColor(0.85,0,0.5,depth_v)
-    debug_draw_scope_box("fill",_scope.Left, _scope.Right, _scope.Top, _scope.Bottom)
-    --love.graphics.setColor(1,1,1,1)
-    --debug_draw_scope_box("line",_scope.Left, _scope.Right, _scope.Top, _scope.Bottom)
-
-    local y = _y
+    debug_draw_scope_box("fill", _scope.Left, _scope.Right, _scope.Top, _scope.Bottom)
+    love.graphics.setColor(1,1,1,depth_v)
+    debug_draw_scope_box("line", _scope.Left, _scope.Right, _scope.Top, _scope.Bottom)
+    
     for i, v in ipairs(_scope.Scopes) do
-        y = y + 8
-        y = debug_draw_scope(v, _depth+1, y, _maxdepth)
+        debug_draw_scope(v, _depth+1, _maxdepth)
     end
-    return y
 end
 
 function lib:display_scopes(_tree)
@@ -138,7 +149,7 @@ function lib:display_scopes(_tree)
     -- draw
     love.graphics.setCanvas(debug_canvas)
     love.graphics.clear(0,0,0,0)
-    debug_draw_scope(_tree.Scope, 0, 0, _tree.MaxDepth)
+    debug_draw_scope(_tree.Scope, 0, _tree.MaxDepth)
     
     -- display
     love.graphics.setCanvas(canvas)
@@ -172,7 +183,7 @@ end
 
 function lib:line(_a,_b)
     lib:draw_bound_scope(_a,_b)
-    love.graphics.line(_a.X, _a.Y, _b.X, _b.Y)
+    love.graphics.line(_a.X+1, _a.Y, _b.X+1, _b.Y)
     lib:pop_scope()
 end
 

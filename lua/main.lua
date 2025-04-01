@@ -61,21 +61,18 @@ local function frame_xy( _info )
 
     local left   = posx - padding
     local top    = posy - padding
-    local right  = left + width + padding * 2
+    local right  = left + width  + padding * 2
     local bottom = top  + height + padding * 2
 
-    local rect_pos  = vec2(left,top)
-    local rect_size = vec2(right - left, bottom - top)
-
-    mv:draw_bound_scope(rect_pos, rect_pos+rect_size)
+    mv:draw_bound_scope(vec2(left,top), vec2(right, bottom))
     
-    mv:draw_bound_scope(rect_pos, rect_pos+rect_size)
-    love.graphics.rectangle( "line", rect_pos.X, rect_pos.Y, rect_size.X, rect_size.Y)
-    local draw_area = mv:pop_scope() or {}
+    mv:draw_bound_scope(vec2(left,top), vec2(right, bottom))
+    mv:rectangle("line", left, top, right, bottom)
+    local draw_area = mv:pop_scope()
 
-    mv:ruler({
-        pos_a=vec2(posx,draw_area.Bottom),
-        pos_b=vec2(posx+width,draw_area.Bottom), 
+    local bottom_ruler = mv:ruler({
+        pos_a=vec2(draw_area.Left  + padding,draw_area.Bottom),
+        pos_b=vec2(draw_area.Right - padding,draw_area.Bottom), 
         num_marks = segs_x, 
         num_submarks = sub_segs_x, 
         mark_length = 8, 
@@ -97,27 +94,25 @@ local function frame_xy( _info )
         flip = true
     })
     
-    local param_offset = 1
+    local text_y = bottom_ruler.PaddedBottom
     for i, v in pairs(params) do
         local str = i .. "=" .. tostring(v)
         local text_height = love.graphics.getFont():getHeight(str)
         local text_width  = love.graphics.getFont():getWidth(str)
-        love.graphics.print(str, 
-            posx, 
-            bottom + (param_offset * text_height) + 5)
-        
-        mv:draw_scope(posx, bottom + (param_offset * text_height) + 5, text_width, text_height)
-        mv:pop_scope()
+        local text_x = draw_area.Left
 
-        param_offset = param_offset + 1
+        love.graphics.print(str, text_x, text_y)
+        
+        mv:draw_scope(text_x, text_y, text_width, text_height)
+        text_y = mv:pop_scope().PaddedBottom
     end
 
-    local scope_reg = mv:pop_scope() or {}
+    local scope_reg = mv:pop_scope()
 
     local regions = {
         position = { scope_reg.Left, scope_reg.Right },
         size = { scope_reg.Right - scope_reg.Left, scope_reg.Bottom - scope_reg.Top },
-        plot_position = {left + padding, top + padding},
+        plot_position = {draw_area.Left + padding, draw_area.Top + padding},
         plot_size     = {width, height}
     }
 
@@ -261,7 +256,7 @@ function love.draw()
     })
     local tree = mv:end_scope()
     mv:display_scopes( tree )
-        
+    
     local ww = region.size[1] + pad*2
     local wh = region.size[2] + pad*2
     local window_width, window_height = love.window.getMode()
