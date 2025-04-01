@@ -291,30 +291,24 @@ end
 function lib:plot_func_line( _info )
     local func       = _info.func
     local params     = _info.params     or { }
-    local pos        = _info.pos        or {   0,   0 }
-    local size       = _info.size       or vec2( 300, 100 )
+    local pos        = _info.pos        or vec2(0,0)
+    local size       = _info.size       or vec2(300, 100)
     local resolution = _info.resolution or size.Y
     local x_range    = _info.x_range    or { 0.0, 1.0 }
     
-    local pos_x,pos_y  = pos[1] or 0, pos[2] or 0
-    local width,height = size.X, size.Y
     local x_range_min,x_range_max = x_range[1] or 0.0, x_range[2] or 1.0
+    local pixel_size = size - 1
     
-    local px_w = width - 1
-    local px_h = height - 1
+    local function x_of(_v) return lerp(pos.X, pos.X + pixel_size.X, _v) end
+    local function y_of(_v) return pos.Y + pixel_size.Y - (_v * pixel_size.Y) end
 
-    local function x_of(_v) return lerp(pos_x, pos_x + px_w, _v) end
-    local function y_of(_v) return pos_y + px_h - (_v * px_h) end
-
-    lib:draw_bound_scope(
-        vec2(pos_x,pos_y),
-        vec2(pos_x,pos_y) + vec2(px_w, px_h))
+    lib:draw_bound_scope( pos, pos + pixel_size)
 
     local real_t = lerp(x_range_min, x_range_max, 0)
     local last_v = func(real_t, unpack(params))
     for i=1, resolution do
-        local t = (i / resolution)
-        local last_t = ((i-1) / resolution)
+        local t = i / resolution
+        local last_t = (i-1) / resolution
         real_t = lerp(x_range_min, x_range_max, t)
         local v = func(real_t, unpack(params))
         

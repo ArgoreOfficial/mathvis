@@ -93,20 +93,20 @@ local function frame_xy( _info )
     local scope_reg = mv:pop_scope()
 
     local regions = {
-        position = { 
+        position = vec2( 
             scope_reg.Left, 
             scope_reg.Top 
-        },
+        ),
         
-        size = { 
+        size = vec2( 
             scope_reg.Right  - scope_reg.Left, 
             scope_reg.Bottom - scope_reg.Top 
-        },
+        ),
         
-        plot_position = { 
+        plot_position = vec2( 
             draw_area.Left + padding, 
             draw_area.Top  + padding
-        },
+        ),
 
         plot_size = size
     }
@@ -252,8 +252,8 @@ function love.draw()
     local tree = mv:end_scope()
     mv:display_scopes( tree )
     
-    local ww = region.position[1] + region.size[1] + pad + 1
-    local wh = region.position[2] + region.size[2] + pad 
+    local ww = region.position.X + region.size.X + pad + 1
+    local wh = region.position.Y + region.size.Y + pad 
     local window_width, window_height = love.window.getMode()
     local resize = window_width ~= ww or window_height ~= wh
     if resize then 
