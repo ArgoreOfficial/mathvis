@@ -263,8 +263,8 @@ function lib:ruler(_info)
 
 		if text_format then
             local str = string.format(text_format, lerp(text_range[1], text_range[2], mark/num_marks))
-			local strw = love.graphics.getFont():getWidth(str)  * 0.75
-			local strh = love.graphics.getFont():getHeight(str) * 0.75
+			local strw = love.graphics.getFont():getWidth(str)  * 0.5
+			local strh = love.graphics.getFont():getHeight(str) * 0.5
 			local strpos = vec2(
 				mark_pos.X - norm.X * strw,
 				mark_pos.Y - norm.Y * strh
