@@ -32,49 +32,32 @@ local function table_length(_t)
 end
 
 local function frame_xy( _info )
-    local pos     = _info.pos     or { 16,   16 }
-    local size    = _info.size    or { 256, 256 }
+    local pos     = _info.pos     or vec2( 16,   16 )
+    local size    = _info.size    or vec2( 256, 256 )
     local x_range = _info.x_range or { 0.0, 3.0 }
     local y_range = _info.y_range or { 0.0, 1.0 }
     local padding = _info.padding or 0
-    local margin  = _info.margin  or 5
     local params  = _info.params  or { }
-    local grid    = _info.grid    or { 6, 6 }
-    local subgrid = _info.subgrid or { 6, 6 }
+    local grid    = _info.grid    or vec2(6, 6)
+    local subgrid = _info.subgrid or vec2(6, 6)
 
-    local segs_x = grid[1] or 0
-    local segs_y = grid[2] or 0
-    
-    local sub_segs_x = subgrid[1] or 0
-    local sub_segs_y = subgrid[2] or 0
-    
-    local text_width  = love.graphics.getFont():getWidth("0.00")
+    local text_width  = love.graphics.getFont():getWidth ("0.00")
     local text_height = love.graphics.getFont():getHeight("0.00")
 
-    local offset_x = padding + margin + text_width
-    local offset_y = padding 
-
-    local posx = (pos[1] or 0) + offset_x
-    local posy = (pos[2] or 0) + offset_y
-    local width  = size[1] or 256
-    local height = size[2] or 256
-
-    local left   = posx - padding
-    local top    = posy - padding
-    local right  = left + width  + padding * 2
-    local bottom = top  + height + padding * 2
-
-    mv:draw_bound_scope(vec2(left,top), vec2(right, bottom))
+    local tl = pos + vec2(text_width, 0) -- shifted due to left ruler numbers. TODO: precompute regions with scopes
+    local br = vec2(tl.X, tl.Y) + size + padding * 2
     
-    mv:draw_bound_scope(vec2(left,top), vec2(right, bottom))
-    mv:rectangle("line", left, top, right, bottom)
+    mv:draw_bound_scope(tl, br)
+    
+    mv:draw_bound_scope(tl, br)
+    mv:rectangle("line", tl.X, tl.Y, br.X, br.Y)
     local draw_area = mv:pop_scope()
 
     local bottom_ruler = mv:ruler({
         pos_a=vec2(draw_area.Left  + padding,draw_area.Bottom),
         pos_b=vec2(draw_area.Right - padding,draw_area.Bottom), 
-        num_marks = segs_x, 
-        num_submarks = sub_segs_x, 
+        num_marks = grid.X, 
+        num_submarks = subgrid.X, 
         mark_length = 8, 
         submark_length = 5,
         text_format = "%.2f", 
@@ -83,10 +66,10 @@ local function frame_xy( _info )
     })
 
     mv:ruler({
-        pos_a=vec2(draw_area.Left, draw_area.Top + padding + height),
+        pos_a=vec2(draw_area.Left, draw_area.Top + padding + size.Y),
         pos_b=vec2(draw_area.Left, draw_area.Top + padding ), 
-        num_marks = segs_y, 
-        num_submarks = sub_segs_y, 
+        num_marks = grid.Y, 
+        num_submarks = subgrid.Y, 
         mark_length = 8, 
         submark_length = 5,
         text_format = "%.2f", 
@@ -110,10 +93,22 @@ local function frame_xy( _info )
     local scope_reg = mv:pop_scope()
 
     local regions = {
-        position = { scope_reg.Left, scope_reg.Right },
-        size = { scope_reg.Right - scope_reg.Left, scope_reg.Bottom - scope_reg.Top },
-        plot_position = {draw_area.Left + padding, draw_area.Top + padding},
-        plot_size     = {width, height}
+        position = { 
+            scope_reg.Left, 
+            scope_reg.Top 
+        },
+        
+        size = { 
+            scope_reg.Right  - scope_reg.Left, 
+            scope_reg.Bottom - scope_reg.Top 
+        },
+        
+        plot_position = { 
+            draw_area.Left + padding, 
+            draw_area.Top  + padding
+        },
+
+        plot_size = size
     }
 
     return regions
@@ -212,13 +207,13 @@ function love.draw()
     
     mv:begin_scope(pad+16,pad+16)
     local region = frame_xy({
-        pos     = { pad, pad },
-        size    = { 500, 300 },
+        pos     = vec2(pad, pad),
+        size    = vec2(500, 300),
         x_range = { 0.0, 3.0 },
         y_range = { 0.0, 1.0 },
-        grid    = {  10,  10 },
-        subgrid = {   6,   3 },
-        padding = 16,
+        grid    = vec2(11, 10),
+        subgrid = vec2(6, 3),
+        padding = pad,
         params  = {
             ["n"] = nval,
             ["K"] = Kval
@@ -257,8 +252,8 @@ function love.draw()
     local tree = mv:end_scope()
     mv:display_scopes( tree )
     
-    local ww = region.size[1] + pad*2
-    local wh = region.size[2] + pad*2
+    local ww = region.position[1] + region.size[1] + pad + 1
+    local wh = region.position[2] + region.size[2] + pad 
     local window_width, window_height = love.window.getMode()
     local resize = window_width ~= ww or window_height ~= wh
     if resize then 

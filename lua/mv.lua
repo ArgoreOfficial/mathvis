@@ -292,12 +292,12 @@ function lib:plot_func_line( _info )
     local func       = _info.func
     local params     = _info.params     or { }
     local pos        = _info.pos        or {   0,   0 }
-    local size       = _info.size       or { 300, 100 }
-    local resolution = _info.resolution or size[1]
+    local size       = _info.size       or vec2( 300, 100 )
+    local resolution = _info.resolution or size.Y
     local x_range    = _info.x_range    or { 0.0, 1.0 }
     
     local pos_x,pos_y  = pos[1] or 0, pos[2] or 0
-    local width,height = size[1] or 256, size[2] or 256
+    local width,height = size.X, size.Y
     local x_range_min,x_range_max = x_range[1] or 0.0, x_range[2] or 1.0
     
     local px_w = width - 1
