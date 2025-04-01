@@ -324,6 +324,89 @@ function lib:plot_func_line( _info )
     lib:pop_scope()
 end
 
+function lib:frame_xy( _info )
+    local pos     = _info.pos     or vec2( 16,   16 )
+    local size    = _info.size    or vec2( 256, 256 )
+    local x_range = _info.x_range or { 0.0, 3.0 }
+    local y_range = _info.y_range or { 0.0, 1.0 }
+    local padding = _info.padding or 0
+    local params  = _info.params  or { }
+    local grid    = _info.grid    or vec2(6, 6)
+    local subgrid = _info.subgrid or vec2(6, 6)
+
+    local text_width  = love.graphics.getFont():getWidth ("0.00")
+    local text_height = love.graphics.getFont():getHeight("0.00")
+
+    local tl = pos + vec2(text_width, 0) -- shifted due to left ruler numbers. TODO: precompute regions with scopes
+    local br = vec2(tl.X, tl.Y) + size + padding * 2
+    
+    lib:draw_bound_scope(tl, br)
+    
+    lib:draw_bound_scope(tl, br)
+    lib:rectangle("line", tl.X, tl.Y, br.X, br.Y)
+    local draw_area = lib:pop_scope()
+
+    local bottom_ruler = lib:ruler({
+        pos_a=vec2(draw_area.Left  + padding,draw_area.Bottom),
+        pos_b=vec2(draw_area.Right - padding,draw_area.Bottom), 
+        num_marks = grid.X, 
+        num_submarks = subgrid.X, 
+        mark_length = 8, 
+        submark_length = 5,
+        text_format = "%.2f", 
+        text_range = x_range,
+        flip = false
+    })
+
+    lib:ruler({
+        pos_a=vec2(draw_area.Left, draw_area.Top + padding + size.Y),
+        pos_b=vec2(draw_area.Left, draw_area.Top + padding ), 
+        num_marks = grid.Y, 
+        num_submarks = subgrid.Y, 
+        mark_length = 8, 
+        submark_length = 5,
+        text_format = "%.2f", 
+        text_range = y_range,
+        flip = true
+    })
+    
+    local text_y = bottom_ruler.PaddedBottom
+    for i, v in pairs(params) do
+        local str = i .. "=" .. tostring(v)
+        local text_height = love.graphics.getFont():getHeight(str)
+        local text_width  = love.graphics.getFont():getWidth(str)
+        local text_x = draw_area.Left
+
+        love.graphics.print(str, text_x, text_y)
+        
+        lib:draw_scope(text_x, text_y, text_width, text_height)
+        text_y = lib:pop_scope().PaddedBottom
+    end
+
+    local scope_reg = lib:pop_scope()
+
+    local regions = {
+        position = vec2( 
+            scope_reg.Left, 
+            scope_reg.Top 
+        ),
+        
+        size = vec2( 
+            scope_reg.Right  - scope_reg.Left, 
+            scope_reg.Bottom - scope_reg.Top 
+        ),
+        
+        plot_position = vec2( 
+            draw_area.Left + padding, 
+            draw_area.Top  + padding
+        ),
+
+        plot_size = size
+    }
+
+    return regions
+end
+
 function lib:plot(_mode, _info)
     if _mode == "line" then lib:plot_func_line(_info) end
 end

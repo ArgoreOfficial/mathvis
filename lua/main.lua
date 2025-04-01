@@ -31,88 +31,7 @@ local function table_length(_t)
     return count
 end
 
-local function frame_xy( _info )
-    local pos     = _info.pos     or vec2( 16,   16 )
-    local size    = _info.size    or vec2( 256, 256 )
-    local x_range = _info.x_range or { 0.0, 3.0 }
-    local y_range = _info.y_range or { 0.0, 1.0 }
-    local padding = _info.padding or 0
-    local params  = _info.params  or { }
-    local grid    = _info.grid    or vec2(6, 6)
-    local subgrid = _info.subgrid or vec2(6, 6)
 
-    local text_width  = love.graphics.getFont():getWidth ("0.00")
-    local text_height = love.graphics.getFont():getHeight("0.00")
-
-    local tl = pos + vec2(text_width, 0) -- shifted due to left ruler numbers. TODO: precompute regions with scopes
-    local br = vec2(tl.X, tl.Y) + size + padding * 2
-    
-    mv:draw_bound_scope(tl, br)
-    
-    mv:draw_bound_scope(tl, br)
-    mv:rectangle("line", tl.X, tl.Y, br.X, br.Y)
-    local draw_area = mv:pop_scope()
-
-    local bottom_ruler = mv:ruler({
-        pos_a=vec2(draw_area.Left  + padding,draw_area.Bottom),
-        pos_b=vec2(draw_area.Right - padding,draw_area.Bottom), 
-        num_marks = grid.X, 
-        num_submarks = subgrid.X, 
-        mark_length = 8, 
-        submark_length = 5,
-        text_format = "%.2f", 
-        text_range = x_range,
-        flip = false
-    })
-
-    mv:ruler({
-        pos_a=vec2(draw_area.Left, draw_area.Top + padding + size.Y),
-        pos_b=vec2(draw_area.Left, draw_area.Top + padding ), 
-        num_marks = grid.Y, 
-        num_submarks = subgrid.Y, 
-        mark_length = 8, 
-        submark_length = 5,
-        text_format = "%.2f", 
-        text_range = y_range,
-        flip = true
-    })
-    
-    local text_y = bottom_ruler.PaddedBottom
-    for i, v in pairs(params) do
-        local str = i .. "=" .. tostring(v)
-        local text_height = love.graphics.getFont():getHeight(str)
-        local text_width  = love.graphics.getFont():getWidth(str)
-        local text_x = draw_area.Left
-
-        love.graphics.print(str, text_x, text_y)
-        
-        mv:draw_scope(text_x, text_y, text_width, text_height)
-        text_y = mv:pop_scope().PaddedBottom
-    end
-
-    local scope_reg = mv:pop_scope()
-
-    local regions = {
-        position = vec2( 
-            scope_reg.Left, 
-            scope_reg.Top 
-        ),
-        
-        size = vec2( 
-            scope_reg.Right  - scope_reg.Left, 
-            scope_reg.Bottom - scope_reg.Top 
-        ),
-        
-        plot_position = vec2( 
-            draw_area.Left + padding, 
-            draw_area.Top  + padding
-        ),
-
-        plot_size = size
-    }
-
-    return regions
-end
 
 local function sin_norm(_v) 
     return math.sin(_v) * 0.5 + 0.5
@@ -206,7 +125,7 @@ function love.draw()
     love.graphics.setColor(1,1,1,1)
     
     mv:begin_scope(pad+16,pad+16)
-    local region = frame_xy({
+    local region = mv:frame_xy({
         pos     = vec2(pad, pad),
         size    = vec2(500, 300),
         x_range = { 0.0, 3.0 },
@@ -250,7 +169,7 @@ function love.draw()
         resolution = 512
     })
     local tree = mv:end_scope()
-    mv:display_scopes( tree )
+    --mv:display_scopes( tree )
     
     local ww = region.position.X + region.size.X + pad + 1
     local wh = region.position.Y + region.size.Y + pad 
