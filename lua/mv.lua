@@ -133,8 +133,9 @@ local function debug_draw_scope(_scope, _depth, _maxdepth)
     
     love.graphics.setColor(0.85,0,0.5,depth_v)
     debug_draw_scope_box("fill", _scope.Left, _scope.Right, _scope.Top, _scope.Bottom)
-    love.graphics.setColor(1,1,1,depth_v)
-    debug_draw_scope_box("line", _scope.Left, _scope.Right, _scope.Top, _scope.Bottom)
+    --love.graphics.setColor(0,0,0,1)
+    --debug_draw_scope_box("line", _scope.Left, _scope.Right, _scope.Top, _scope.Bottom)
+    love.graphics.setColor(1,1,1,1)
     
     for i, v in ipairs(_scope.Scopes) do
         debug_draw_scope(v, _depth+1, _maxdepth)
