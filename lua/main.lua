@@ -41,18 +41,7 @@ local pad = 16
 local t = 0.0
 local nval_A = 0.7
 local nval_B = 0.2
-local Kval =  0.6
-
-local function tick(_dt)
-    local delta_a = hill (conc_B, 0.6, nval_A) - 0.3
-    local delta_b = hill2(conc_A, 0.6, nval_B) - conc_A
-
-    conc_A = conc_A + (delta_a * _dt)
-    conc_B = conc_B + (delta_b * _dt)
-
-    conc_A = math.max(conc_A, 0.0)
-    conc_B = math.max(conc_B, 0.0)
-end
+local Kval   = 0.6
 
 function love.update(_dt)
     t = t + _dt
@@ -135,7 +124,7 @@ function love.draw()
     love.graphics.setColor(0.5,0.9,0.5)
     mv:plot("line", {
         func       = hill,
-        params     = { Kval, 0.7 },
+        params     = { Kval, nval_A },
         pos        = region.plot_position,
         size       = region.plot_size,
         x_range    = x_range,
@@ -145,7 +134,7 @@ function love.draw()
     love.graphics.setColor(0.9,0.5,0.5)
     mv:plot("line", {
         func       = hill2,
-        params     = { Kval, 0.3 },
+        params     = { Kval, nval_B },
         pos        = region.plot_position,
         size       = region.plot_size,
         x_range    = x_range,
@@ -175,14 +164,40 @@ function love.draw()
         })
     end
     
-    love.graphics.setColor(0.5,0.5,0.9, 1.0)
-
-    local num_frames = 100
-
+    
+    
+    love.graphics.setColor(1,1,1,1)
+    local num_frames = 400
     for i=0,num_frames do
-        tick(1/120)
+        local tick_dt = 1/120
+
+        local delta_A = hill (conc_B, Kval, nval_A) - 0.3
+        local delta_B = hill2(conc_A, Kval, nval_B) - conc_A
+
+        conc_A = conc_A + (delta_A * tick_dt)
+        conc_B = conc_B + (delta_B * tick_dt)
+
+        conc_A = math.max(conc_A, 0.0)
+        conc_B = math.max(conc_B, 0.0)
+
         plot_point({
             point = vec2(conc_A, conc_B),
+            pos = region.plot_position,
+            size = region.plot_size,
+            x_range = {0, 3},
+            y_range = {0, 1}
+        })
+
+        plot_point({
+            point = vec2(conc_A, hill2(conc_A, Kval, nval_B)),
+            pos = region.plot_position,
+            size = region.plot_size,
+            x_range = {0, 3},
+            y_range = {0, 1}
+        })
+
+        plot_point({
+            point = vec2(conc_B, hill (conc_B, Kval, nval_A)),
             pos = region.plot_position,
             size = region.plot_size,
             x_range = {0, 3},
