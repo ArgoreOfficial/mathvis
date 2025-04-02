@@ -37,14 +37,19 @@ end
 local conc_A = 0.0
 local conc_B = 0.0
 
+local decay_A = 0.64478415 
+local decay_B = 0.38393326 
+
 local pad = 16
 local t = 0.0
+local dt = 0.0
 local nval_A = 0.7
 local nval_B = 0.2
 local Kval   = 0.6
 
 function love.update(_dt)
     t = t + _dt
+    dt = _dt
     --nval = mathex.sin_norm(t) * 14.0 + 1.0
     --Kval = mathex.lerp(0.1, 4.8, mathex.sin_norm(t))
 end
@@ -117,13 +122,15 @@ function love.draw()
         params  = {
             ["n A"] = nval_A,
             ["n B"] = nval_B,
-            ["K"] = Kval
+            ["K"] = Kval,
+            ["conc_A"] = conc_A,
+            ["conc_B"] = conc_B,
         }
     })
     
     love.graphics.setColor(0.5,0.9,0.5)
     mv:plot("line", {
-        func       = hill,
+        func       = function(i,k,n) return hill(i,k,n) - decay_A end,
         params     = { Kval, nval_A },
         pos        = region.plot_position,
         size       = region.plot_size,
@@ -133,7 +140,7 @@ function love.draw()
     
     love.graphics.setColor(0.9,0.5,0.5)
     mv:plot("line", {
-        func       = hill2,
+        func       = function(i,k,n) return hill2(i,k,n) - decay_B end,
         params     = { Kval, nval_B },
         pos        = region.plot_position,
         size       = region.plot_size,
@@ -164,15 +171,36 @@ function love.draw()
         })
     end
     
+    -- decay_A = mathex.lerp( 0.1, 0.7, mathex.sin_norm(t) )
+    -- decay_B = mathex.lerp( 0.3, 1.0, mathex.cos_norm(t) )
     
-    
+    local move_speed = 0.1
+    if love.keyboard.isDown( "d" ) then
+        decay_A = decay_A + dt * move_speed
+    end
+
+    if love.keyboard.isDown( "a" ) then
+        decay_A = decay_A - dt * move_speed
+    end
+
+    if love.keyboard.isDown( "w" ) then
+        decay_B = decay_B + dt * move_speed
+    end
+
+    if love.keyboard.isDown( "s" ) then
+        decay_B = decay_B - dt * move_speed
+    end
+
+    love.graphics.print(decay_A, 0, 0)
+    love.graphics.print(decay_B, 0, 16)
+
     love.graphics.setColor(1,1,1,1)
-    local num_frames = 400
+    local num_frames = 80000
     for i=0,num_frames do
         local tick_dt = 1/120
 
-        local delta_A = hill (conc_B, Kval, nval_A) - 0.3
-        local delta_B = hill2(conc_A, Kval, nval_B) - conc_A
+        local delta_A = hill (conc_B, Kval, nval_A) - decay_A
+        local delta_B = hill2(conc_A, Kval, nval_B) - decay_B
 
         conc_A = conc_A + (delta_A * tick_dt)
         conc_B = conc_B + (delta_B * tick_dt)
@@ -184,25 +212,10 @@ function love.draw()
             point = vec2(conc_A, conc_B),
             pos = region.plot_position,
             size = region.plot_size,
-            x_range = {0, 3},
-            y_range = {0, 1}
+            x_range = {0, 100.0},
+            y_range = {0, 4.0}
         })
 
-        plot_point({
-            point = vec2(conc_A, hill2(conc_A, Kval, nval_B)),
-            pos = region.plot_position,
-            size = region.plot_size,
-            x_range = {0, 3},
-            y_range = {0, 1}
-        })
-
-        plot_point({
-            point = vec2(conc_B, hill (conc_B, Kval, nval_A)),
-            pos = region.plot_position,
-            size = region.plot_size,
-            x_range = {0, 3},
-            y_range = {0, 1}
-        })
     end
 
     local ww = region.position.X + region.size.X + pad + 1
