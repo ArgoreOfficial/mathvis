@@ -2,12 +2,6 @@ _G._DEBUG = false
 
 local mv = require "mv"
 
-local function table(_t)
-    local count = 0
-    for _ in pairs(_t) do count = count + 1 end
-    return count
-end
-
 -- n = count
 -- A = receptor
 -- B = ligand molecules
@@ -40,6 +34,9 @@ local conc_B = 0.0
 local decay_A = 0.64478415 
 local decay_B = 0.38393326 
 
+local sim_scale     = 60 -- how many 1/n seconds in one frame
+local num_sim_ticks = 50000 -- how many to frames to simulate
+
 local pad = 16
 local t = 0.0
 local dt = 0.0
@@ -47,13 +44,23 @@ local nval_A = 0.7
 local nval_B = 0.2
 local Kval   = 0.6
 
+local history_A = {}
+local history_B = {}
+local history_depth = sim_scale
+
+local function push_history( _t, _v )
+    table.insert(_t, 1, _v)
+    if #_t > history_depth then
+        table.remove(_t, #_t)
+    end
+end
+
 function love.update(_dt)
     t = t + _dt
     dt = _dt
     --nval = mathex.sin_norm(t) * 14.0 + 1.0
     --Kval = mathex.lerp(0.1, 4.8, mathex.sin_norm(t))
 end
-
 
 local function range_to_range(_range1, _range2, _value)
     local start_1, end_1 = unpack( _range1 )
@@ -105,6 +112,71 @@ local function plot_point(_info)
     love.graphics.circle("fill", point_pos.X, point_pos.Y, 1)
 end
 
+local last_line_pos = nil
+local function plot_line(_info)
+    local point = _info.point or vec2(0,0)
+    local pos = _info.pos or vec2(0,0)
+    local size = _info.size or vec2(256,256)
+    local x_range = _info.x_range or {0.0, 1.0}
+    local y_range = _info.y_range or {0.0, 1.0}
+
+    local norm_x = range_to_range(x_range, {0.0, 1.0}, point.X)
+    local norm_y = range_to_range(y_range, {0.0, 1.0}, point.Y)
+    
+    local point_pos = vec2(
+        mathex.lerp(pos.X, pos.X + size.X, norm_x),
+        mathex.lerp(pos.Y + size.Y, pos.Y, norm_y)
+    )
+
+    if last_line_pos ~= nil then
+        love.graphics.line(last_line_pos.X, last_line_pos.Y, point_pos.X, point_pos.Y)
+    end
+
+    last_line_pos = point_pos
+end
+
+local function end_plot_line() 
+    last_line_pos = nil
+end
+
+local function plot_history(i, _t)
+    local i = math.floor( i )
+    if i > #_t then return 0 end
+    
+    return _t[ (#_t+1) - i ] / 30.0
+end
+
+local function handle_input()
+
+    local move_speed = 0.1
+    if love.keyboard.isDown( "d" ) then
+        decay_A = decay_A + dt * move_speed
+    end
+
+    if love.keyboard.isDown( "a" ) then
+        decay_A = decay_A - dt * move_speed
+    end
+
+    if love.keyboard.isDown( "w" ) then
+        decay_B = decay_B + dt * move_speed
+    end
+
+    if love.keyboard.isDown( "s" ) then
+        decay_B = decay_B - dt * move_speed
+    end
+
+    if love.keyboard.isDown( "e" ) then
+        num_sim_ticks = num_sim_ticks + 20
+    end
+
+    if love.keyboard.isDown( "q" ) then
+        num_sim_ticks = num_sim_ticks - 20
+    end
+
+    num_sim_ticks = math.max( num_sim_ticks, 1 )
+
+end
+
 function love.draw()
     love.graphics.clear()
     love.graphics.setColor(1,1,1,1)
@@ -119,6 +191,7 @@ function love.draw()
         grid    = vec2(11, 10),
         subgrid = vec2(6, 3),
         padding = pad,
+        format  = "%.2f",
         params  = {
             ["n A"] = nval_A,
             ["n B"] = nval_B,
@@ -126,7 +199,8 @@ function love.draw()
             ["conc_A"] = conc_A,
             ["conc_B"] = conc_B,
             ["decay_A"] = decay_A,
-            ["decay_B"] = decay_B
+            ["decay_B"] = decay_B,
+            ["ticks"] = num_sim_ticks
         }
     })
     
@@ -176,27 +250,53 @@ function love.draw()
     -- decay_A = mathex.lerp( 0.1, 0.7, mathex.sin_norm(t) )
     -- decay_B = mathex.lerp( 0.3, 1.0, mathex.cos_norm(t) )
     
-    local move_speed = 0.1
-    if love.keyboard.isDown( "d" ) then
-        decay_A = decay_A + dt * move_speed
-    end
-
-    if love.keyboard.isDown( "a" ) then
-        decay_A = decay_A - dt * move_speed
-    end
-
-    if love.keyboard.isDown( "w" ) then
-        decay_B = decay_B + dt * move_speed
-    end
-
-    if love.keyboard.isDown( "s" ) then
-        decay_B = decay_B - dt * move_speed
-    end
+    handle_input()
 
     love.graphics.setColor(1,1,1,1)
-    local num_frames = 80000
-    for i=0,num_frames do
-        local tick_dt = 1/120
+    
+    push_history(history_A, conc_A)
+    push_history(history_B, conc_B)
+
+    mv:begin_scope(pad+16,pad+16)
+    local region2 = mv:frame_xy({
+        pos     = vec2(region.position.X + region.size.X + pad + 1, pad),
+        size    = vec2(500, 300),
+        x_range = { 0, num_sim_ticks / sim_scale },
+        --y_range = { 0.0, 1.0 },
+        grid    = vec2(4, 10),
+        subgrid = vec2(2, 3),
+        padding = pad,
+        format  = "%.3f",
+        params  = {
+            ["conc_A"] = conc_A,
+            ["conc_B"] = conc_B,
+            ["ticks"] = num_sim_ticks
+        }
+    })
+    
+    love.graphics.setColor(0.9,0.5,0.5)
+    mv:plot("line", {
+        func       = plot_history,
+        params     = {history_A},
+        pos        = region2.plot_position,
+        size       = region2.plot_size,
+        x_range    = {1, #history_A},
+        resolution = #history_A
+    })
+    
+    love.graphics.setColor(0.5,0.9,0.5)
+    mv:plot("line", {
+        func       = plot_history,
+        params     = {history_B},
+        pos        = region2.plot_position,
+        size       = region2.plot_size,
+        x_range    = {1, #history_B},
+        resolution = #history_B
+    })
+    
+   
+    for i=0,num_sim_ticks do
+        local tick_dt = 1/sim_scale
 
         local delta_A = hill (conc_B, Kval, nval_A) - decay_A
         local delta_B = hill2(conc_A, Kval, nval_B) - decay_B
@@ -206,19 +306,29 @@ function love.draw()
 
         conc_A = math.max(conc_A, 0.0)
         conc_B = math.max(conc_B, 0.0)
-
-        plot_point({
+        
+        local halpha = i / num_sim_ticks
+        love.graphics.setColor(0.5,0.5,0.9, 1-halpha)
+        plot_line({
             point = vec2(conc_A, conc_B),
-            pos = region.plot_position,
-            size = region.plot_size,
-            x_range = {0, 100.0},
-            y_range = {0, 4.0}
+            pos  = region2.plot_position,
+            size = region2.plot_size,
+            x_range = {0, 1000.0},
+            y_range = {0, 40.0}
         })
-
     end
+    end_plot_line()
+
+    for i = 1, #history_A do
+    end
+    love.graphics.setColor(1,1,1,1)
+    mv:end_scope()
 
     local ww = region.position.X + region.size.X + pad + 1
     local wh = region.position.Y + region.size.Y + pad 
+
+    local ww = ww * 2
+
     local window_width, window_height = love.window.getMode()
     local resize = window_width ~= ww or window_height ~= wh
     if resize then 

@@ -335,12 +335,13 @@ end
 function lib:frame_xy( _info )
     local pos     = _info.pos     or vec2( 16,   16 )
     local size    = _info.size    or vec2( 256, 256 )
-    local x_range = _info.x_range or { 0.0, 3.0 }
-    local y_range = _info.y_range or { 0.0, 1.0 }
+    local x_range = _info.x_range
+    local y_range = _info.y_range
     local padding = _info.padding or 0
     local params  = _info.params  or { }
     local grid    = _info.grid    or vec2(6, 6)
     local subgrid = _info.subgrid or vec2(6, 6)
+    local format  = _info.format
 
     local text_width  = love.graphics.getFont():getWidth ("0.00")
     local text_height = love.graphics.getFont():getHeight("0.00")
@@ -354,31 +355,38 @@ function lib:frame_xy( _info )
     lib:rectangle("line", tl.X, tl.Y, br.X, br.Y)
     local draw_area = lib:pop_scope()
 
-    local bottom_ruler = lib:ruler({
-        pos_a=vec2(draw_area.Left  + padding,draw_area.Bottom),
-        pos_b=vec2(draw_area.Right - padding,draw_area.Bottom), 
-        num_marks = grid.X, 
-        num_submarks = subgrid.X, 
-        mark_length = 8, 
-        submark_length = 5,
-        text_format = "%.2f", 
-        text_range = x_range,
-        flip = false
-    })
+    local bottom = draw_area.Bottom
 
-    lib:ruler({
-        pos_a=vec2(draw_area.Left, draw_area.Top + padding + size.Y),
-        pos_b=vec2(draw_area.Left, draw_area.Top + padding ), 
-        num_marks = grid.Y, 
-        num_submarks = subgrid.Y, 
-        mark_length = 8, 
-        submark_length = 5,
-        text_format = "%.2f", 
-        text_range = y_range,
-        flip = true
-    })
+    if x_range then
+        local bottom_ruler = lib:ruler({
+            pos_a=vec2(draw_area.Left  + padding,draw_area.Bottom),
+            pos_b=vec2(draw_area.Right - padding,draw_area.Bottom), 
+            num_marks = grid.X, 
+            num_submarks = subgrid.X, 
+            mark_length = 8, 
+            submark_length = 5,
+            text_format = format, 
+            text_range = x_range,
+            flip = false
+        })
+        bottom = bottom_ruler.Bottom
+    end
+
+    if y_range then
+        lib:ruler({
+            pos_a=vec2(draw_area.Left, draw_area.Top + padding + size.Y),
+            pos_b=vec2(draw_area.Left, draw_area.Top + padding ), 
+            num_marks = grid.Y, 
+            num_submarks = subgrid.Y, 
+            mark_length = 8, 
+            submark_length = 5,
+            text_format = format, 
+            text_range = y_range,
+            flip = true
+        })
+    end
     
-    local text_y = bottom_ruler.PaddedBottom
+    local text_y = bottom
     for i, v in pairs(params) do
         local str = i .. "=" .. tostring(v)
         local text_height = love.graphics.getFont():getHeight(str)
