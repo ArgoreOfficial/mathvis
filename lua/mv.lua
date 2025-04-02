@@ -1,6 +1,6 @@
 local lib = {}
 
-require "mv_math"
+require "ex.math"
 
 local debug_canvas = love.graphics.newCanvas(100,100)
 local g_scope_padding = 0
@@ -245,8 +245,8 @@ function lib:ruler(_info)
     local dy = pos_b.Y - pos_a.Y
     
     local norm = nil
-	if flip then norm = vec2_normalize(vec2(-dy,  dx))
-	else         norm = vec2_normalize(vec2( dy, -dx)) end
+	if flip then norm = mathex.vec2_normalize(vec2(-dy,  dx))
+	else         norm = mathex.vec2_normalize(vec2( dy, -dx)) end
 	
     local mark_dir    = norm * mark_length
     local submark_dir = norm * submark_length
@@ -258,11 +258,11 @@ function lib:ruler(_info)
         pos_b+mark_dir)
     
     for mark=0, num_marks do
-        local mark_pos = lerp(pos_a, pos_b, mark/num_marks)
+        local mark_pos = mathex.lerp(pos_a, pos_b, mark/num_marks)
         lib:line(mark_pos, mark_pos + mark_dir)
 
 		if text_format then
-            local str = string.format(text_format, lerp(text_range[1], text_range[2], mark/num_marks))
+            local str = string.format(text_format, mathex.lerp(text_range[1], text_range[2], mark/num_marks))
 			local strw = love.graphics.getFont():getWidth(str)  * 0.5
 			local strh = love.graphics.getFont():getHeight(str) * 0.5
 			local strpos = vec2(
@@ -274,11 +274,11 @@ function lib:ruler(_info)
 		end
 
         if mark < num_marks then
-            local next_mark = lerp(pos_a, pos_b, (mark+1)/num_marks)
+            local next_mark = mathex.lerp(pos_a, pos_b, (mark+1)/num_marks)
 
             for submark=0, num_submarks do
                 local v = ((submark+1)/(num_submarks+2))
-                local submark_pos = lerp(mark_pos, next_mark, v)
+                local submark_pos = mathex.lerp(mark_pos, next_mark, v)
         
                 lib:line(submark_pos, submark_pos+submark_dir)
             end
@@ -299,17 +299,17 @@ function lib:plot_func_line( _info )
     local x_range_min,x_range_max = x_range[1] or 0.0, x_range[2] or 1.0
     local pixel_size = size - 1
     
-    local function x_of(_v) return lerp(pos.X, pos.X + pixel_size.X, _v) end
+    local function x_of(_v) return mathex.lerp(pos.X, pos.X + pixel_size.X, _v) end
     local function y_of(_v) return pos.Y + pixel_size.Y - (_v * pixel_size.Y) end
 
     lib:draw_bound_scope( pos, pos + pixel_size)
 
-    local real_t = lerp(x_range_min, x_range_max, 0)
+    local real_t = mathex.lerp(x_range_min, x_range_max, 0)
     local last_v = func(real_t, unpack(params))
     for i=1, resolution do
         local t = i / resolution
         local last_t = (i-1) / resolution
-        real_t = lerp(x_range_min, x_range_max, t)
+        real_t = mathex.lerp(x_range_min, x_range_max, t)
         local v = func(real_t, unpack(params))
         
         local x = x_of(t)

@@ -1,89 +1,11 @@
 _G._DEBUG = false
 
-require "mv_math"
 local mv = require "mv"
 
-local function draw_graph(_t, _x, _y, _width, _height )
-
-    if #_t < 2 then return end
-
-    local function _get_y(_v) return _y + _height - _v * _height end
-
-    local last_x = _x
-    local last_y = _get_y(_t[1])
-    local cell_size = _width / (#_t-1)
-
-    for i=2, #_t do
-        local x = _x + (i - 1) * cell_size
-        
-        local y = _get_y(_t[i])
-
-        love.graphics.line(last_x, last_y, x, y)
-
-        last_x = x
-        last_y = y
-    end
-end
-
-local function table_length(_t)
+local function table(_t)
     local count = 0
     for _ in pairs(_t) do count = count + 1 end
     return count
-end
-
-
-
-local function sin_norm(_v) 
-    return math.sin(_v) * 0.5 + 0.5
-end
-
-local function cos_norm(_v) 
-    return math.cos(_v) * 0.5 + 0.5
-end
-
-local function clamp(_v, _min, _max)
-    return math.max( math.min( _v, _max ), _min )
-end
-
-local function plot_func( _info )
-    local func       = _info.func
-    local params     = _info.params     or { }
-    local pos        = _info.pos        or {   0,   0 }
-    local size       = _info.size       or { 300, 100 }
-    local resolution = _info.resolution or size[1]
-    local x_range      = _info.x_range      or { 0.0, 1.0 }
-    
-    local pos_x  = pos[1]
-    local pos_y  = pos[2]
-    
-    local width  = size[1]
-    local height = size[2]
-
-    local x_range_min = x_range[1]
-    local x_range_max = x_range[2]
-
-    local px_w = width - 1
-    local px_h = height - 1
-    
-    local data = love.image.newImageData(width,height)
-    
-    for i=x_range_min, resolution do
-        local xval = (i / resolution) * x_range_max
-        local v = func( xval, unpack(params) )
-
-        local x = (xval / x_range_max) * px_w
-        local y = px_h - (v * px_h)
-
-        local in_x_range = (x >= 0 and x < width)
-        local in_y_range = (y >= 0 and y < height)
-
-        if in_x_range and in_y_range then
-            data:setPixel(x,y,1,1,1,1)
-        end
-    end
-    
-    local image = love.graphics.newImage(data)
-    love.graphics.draw(image, pos_x, pos_y)
 end
 
 -- n = count
@@ -111,24 +33,93 @@ function love.load()
     love.window.setTitle( "GeRNS" )
 end
 
+
+local conc_A = 0.0
+local conc_B = 0.0
+
 local pad = 16
 local t = 0.0
 local nval = 1.0
-local Kval = 1.0
+local Kval = 0.7
+
+local function tick(_dt)
+
+    local delta_a = hill (conc_B, Kval, 0.3) - 0.4
+    local delta_b = hill2(conc_A, Kval, 0.7) - conc_A
+
+    conc_A = conc_A + (delta_a * _dt)
+    conc_B = conc_B + (delta_b * _dt)
+
+    conc_A = math.max(conc_A, 0.0)
+    conc_B = math.max(conc_B, 0.0)
+end
+
 function love.update(_dt)
     t = t + _dt
-    nval = sin_norm(t) * 14.0 + 1.0
+    
+end
+
+
+local function range_to_range(_range1, _range2, _value)
+    local start_1, end_1 = unpack( _range1 )
+    local start_2, end_2 = unpack( _range2 )
+
+    return mathex.lerp(
+        start_2, 
+        end_2, 
+        (_value - start_1) / (end_1 - start_1))
+end
+
+local function plot_line_y(_info)
+    local value = _info.value or 0.5
+    local pos = _info.pos or vec2(0,0)
+    local size = _info.size or vec2(256,256)
+    local x_range = _info.x_range or {0.0, 1.0}
+    
+    local normalized = range_to_range(x_range, {0.0, 1.0}, value)
+    if normalized > 1.0 then return end
+    if normalized < 0.0 then return end
+
+    local line_x = pos.X + normalized * (size.X)
+    love.graphics.line(line_x, pos.Y, line_x, pos.Y + size.Y)
+
+    if _info.format then 
+        local half_y = mathex.lerp(pos.Y, pos.Y + size.Y, 0.5)
+        local str = string.format(_info.format, value)
+        --love.graphics.print(str, math.floor(line_x) + 2, math.floor(half_y))
+        local str_height = love.graphics.getFont():getHeight(str)
+        mv:text_centre( str, math.floor(line_x), math.floor(pos.Y) - str_height/2 )
+    end
+end
+
+local function plot_point(_info)
+    local point = _info.point or vec2(0,0)
+    local pos = _info.pos or vec2(0,0)
+    local size = _info.size or vec2(256,256)
+    local x_range = _info.x_range or {0.0, 1.0}
+    local y_range = _info.y_range or {0.0, 1.0}
+
+    local norm_x = range_to_range(x_range, {0.0, 1.0}, point.X)
+    local norm_y = range_to_range(y_range, {0.0, 1.0}, point.Y)
+    
+    local point_pos = vec2(
+        mathex.lerp(pos.X, pos.X + size.X, norm_x),
+        mathex.lerp(pos.Y + size.Y, pos.Y, norm_y)
+    )
+
+    love.graphics.circle("fill", point_pos.X, point_pos.Y, 1)
 end
 
 function love.draw()
     love.graphics.clear()
     love.graphics.setColor(1,1,1,1)
     
+    local x_range = {0.0, 3.0}
     mv:begin_scope(pad+16,pad+16)
     local region = mv:frame_xy({
         pos     = vec2(pad, pad),
         size    = vec2(500, 300),
-        x_range = { 0.0, 3.0 },
+        x_range = x_range,
         y_range = { 0.0, 1.0 },
         grid    = vec2(11, 10),
         subgrid = vec2(6, 3),
@@ -142,35 +133,64 @@ function love.draw()
     love.graphics.setColor(0.5,0.9,0.5)
     mv:plot("line", {
         func       = hill,
-        params     = { Kval, nval },
+        params     = { Kval, 0.7 },
         pos        = region.plot_position,
         size       = region.plot_size,
-        x_range    = { 0.0, 4.0 },
+        x_range    = x_range,
         resolution = 512
     })
-
+    
     love.graphics.setColor(0.9,0.5,0.5)
     mv:plot("line", {
         func       = hill2,
-        params     = { Kval, nval },
+        params     = { Kval, 0.3 },
         pos        = region.plot_position,
         size       = region.plot_size,
-        x_range    = { 0.0, 4.0 },
+        x_range    = x_range,
         resolution = 512
     })
     
-    love.graphics.setColor(0.5,0.5,0.9)
-    mv:plot("line", {
-        func       = hill_mult,
-        params     = { Kval, nval, 2.0, nval },
-        pos        = region.plot_position,
-        size       = region.plot_size,
-        x_range    = { 0.0, 4.0 },
-        resolution = 512
-    })
     local tree = mv:end_scope()
     --mv:display_scopes( tree )
     
+    if false then
+        love.graphics.setColor(0.5,0.9,0.5)
+        plot_line_y({
+            value = conc_A,
+            pos = region.plot_position,
+            size = region.plot_size,
+            x_range = x_range,
+            format = "%.2f"
+        })
+    
+        love.graphics.setColor(0.9,0.5,0.5)
+        plot_line_y({
+            value = conc_B,
+            pos = region.plot_position,
+            size = region.plot_size,
+            x_range = x_range,
+            format = "%.2f"
+        })
+    end
+    
+    love.graphics.setColor(0.5,0.5,0.9, 1.0)
+
+    conc_A = 0
+    conc_B = 0
+
+    local num_frames = 6000
+
+    for i=0,num_frames do
+        tick(1/120)
+        plot_point({
+            point = vec2(conc_A, conc_B),
+            pos = region.plot_position,
+            size = region.plot_size,
+            x_range = {0, 3},
+            y_range = {0, 1}
+        })
+    end
+
     local ww = region.position.X + region.size.X + pad + 1
     local wh = region.position.Y + region.size.Y + pad 
     local window_width, window_height = love.window.getMode()
