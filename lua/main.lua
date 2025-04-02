@@ -39,13 +39,13 @@ local conc_B = 0.0
 
 local pad = 16
 local t = 0.0
-local nval = 1.0
-local Kval = 0.7
+local nval_A = 0.7
+local nval_B = 0.2
+local Kval =  0.6
 
 local function tick(_dt)
-
-    local delta_a = hill (conc_B, Kval, 0.3) - 0.4
-    local delta_b = hill2(conc_A, Kval, 0.7) - conc_A
+    local delta_a = hill (conc_B, 0.6, nval_A) - 0.3
+    local delta_b = hill2(conc_A, 0.6, nval_B) - conc_A
 
     conc_A = conc_A + (delta_a * _dt)
     conc_B = conc_B + (delta_b * _dt)
@@ -56,7 +56,8 @@ end
 
 function love.update(_dt)
     t = t + _dt
-    
+    --nval = mathex.sin_norm(t) * 14.0 + 1.0
+    --Kval = mathex.lerp(0.1, 4.8, mathex.sin_norm(t))
 end
 
 
@@ -125,7 +126,8 @@ function love.draw()
         subgrid = vec2(6, 3),
         padding = pad,
         params  = {
-            ["n"] = nval,
+            ["n A"] = nval_A,
+            ["n B"] = nval_B,
             ["K"] = Kval
         }
     })
@@ -175,10 +177,7 @@ function love.draw()
     
     love.graphics.setColor(0.5,0.5,0.9, 1.0)
 
-    conc_A = 0
-    conc_B = 0
-
-    local num_frames = 6000
+    local num_frames = 100
 
     for i=0,num_frames do
         tick(1/120)
