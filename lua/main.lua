@@ -125,6 +125,8 @@ function love.draw()
             ["K"] = Kval,
             ["conc_A"] = conc_A,
             ["conc_B"] = conc_B,
+            ["decay_A"] = decay_A,
+            ["decay_B"] = decay_B
         }
     })
     
@@ -190,9 +192,6 @@ function love.draw()
     if love.keyboard.isDown( "s" ) then
         decay_B = decay_B - dt * move_speed
     end
-
-    love.graphics.print(decay_A, 0, 0)
-    love.graphics.print(decay_B, 0, 16)
 
     love.graphics.setColor(1,1,1,1)
     local num_frames = 80000

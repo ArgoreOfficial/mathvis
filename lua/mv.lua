@@ -295,14 +295,19 @@ function lib:plot_func_line( _info )
     local size       = _info.size       or vec2(300, 100)
     local resolution = _info.resolution or size.Y
     local x_range    = _info.x_range    or { 0.0, 1.0 }
-    
+
+    local canvas = love.graphics.newCanvas(size.X, size.Y)
+    local old_canvas = love.graphics.getCanvas()
+    love.graphics.setCanvas(canvas)
+    love.graphics.clear(0,0,0,0)
+
     local x_range_min,x_range_max = x_range[1] or 0.0, x_range[2] or 1.0
     local pixel_size = size - 1
     
-    local function x_of(_v) return mathex.lerp(pos.X, pos.X + pixel_size.X, _v) end
-    local function y_of(_v) return pos.Y + pixel_size.Y - (_v * pixel_size.Y) end
+    local function x_of(_v) return mathex.lerp(0, pixel_size.X, _v) end
+    local function y_of(_v) return pixel_size.Y - (_v * pixel_size.Y) end
 
-    lib:draw_bound_scope( pos, pos + pixel_size)
+    lib:draw_bound_scope( vec2(0,0), pixel_size )
 
     local real_t = mathex.lerp(x_range_min, x_range_max, 0)
     local last_v = func(real_t, unpack(params))
@@ -322,6 +327,9 @@ function lib:plot_func_line( _info )
     end
 
     lib:pop_scope()
+
+    love.graphics.setCanvas(old_canvas)
+    love.graphics.draw(canvas, pos.X, pos.Y)
 end
 
 function lib:frame_xy( _info )
