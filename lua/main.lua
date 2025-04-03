@@ -177,11 +177,9 @@ local function handle_input()
 
 end
 
-function love.draw()
-    love.graphics.clear()
-    love.graphics.setColor(1,1,1,1)
-    
-    local x_range = {0.0, 3.0}
+local x_range = {0.0, 3.0}
+
+function decay_graphs()
     mv:begin_scope(pad+16,pad+16)
     local region = mv:frame_xy({
         pos     = vec2(pad, pad),
@@ -204,6 +202,7 @@ function love.draw()
         }
     })
     
+
     love.graphics.setColor(0.5,0.9,0.5)
     mv:plot("line", {
         func       = function(i,k,n) return hill(i,k,n) - decay_A end,
@@ -225,6 +224,67 @@ function love.draw()
     })
     
     local tree = mv:end_scope()
+
+    return region
+end
+
+function atan2_graphs()
+    local r = 4.0;
+    local x_range2 = { -r, r }
+
+    mv:begin_scope(pad+16,pad+16)
+    local region = mv:frame_xy({
+        pos     = vec2(pad, pad),
+        size    = vec2(500, 300),
+        x_range = x_range2,
+        y_range = { 0.0, 1.0 },
+        grid    = vec2(11, 10),
+        subgrid = vec2(6, 3),
+        padding = pad,
+        format  = "%.2f",
+        params  = {
+            ["n A"] = nval_A,
+            ["n B"] = nval_B,
+            ["K"] = Kval,
+            ["conc_A"] = conc_A,
+            ["conc_B"] = conc_B,
+            ["decay_A"] = decay_A,
+            ["decay_B"] = decay_B,
+            ["ticks"] = num_sim_ticks
+        }
+    })
+    
+    love.graphics.setColor(0.9,0.5,0.5)
+    mv:plot("line", {
+        func       = function(i) return math.atan2(i, 1) * 0.2 + 0.5 end,
+        pos        = region.plot_position,
+        size       = region.plot_size,
+        x_range    = x_range2,
+        resolution = 512
+    })
+    
+    love.graphics.setColor(0.5,0.9,0.5)
+    mv:plot("line", {
+        func       = function(i) return math.asin(i) * 0.2 + 0.5 end,
+        pos        = region.plot_position,
+        size       = region.plot_size,
+        x_range    = x_range2,
+        resolution = 512
+    })
+    
+    local tree = mv:end_scope()
+
+    return region
+end
+
+function love.draw()
+    love.graphics.clear()
+    love.graphics.setColor(1,1,1,1)
+    
+    
+    --decay_graphs()
+    local region = atan2_graphs()
+
     --mv:display_scopes( tree )
     
     if false then
