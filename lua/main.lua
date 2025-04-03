@@ -35,7 +35,7 @@ local decay_A = 0.64478415
 local decay_B = 0.38393326 
 
 local sim_scale     = 60 -- how many 1/n seconds in one frame
-local num_sim_ticks = 50000 -- how many to frames to simulate
+local num_sim_ticks = 500 -- how many to frames to simulate
 
 local pad = 16
 local t = 0.0
@@ -143,7 +143,7 @@ local function plot_history(i, _t)
     local i = math.floor( i )
     if i > #_t then return 0 end
     
-    return _t[ (#_t+1) - i ] / 30.0
+    return _t[ (#_t+1) - i ] / 70.0
 end
 
 local function handle_input()
@@ -313,7 +313,7 @@ function love.draw()
             point = vec2(conc_A, conc_B),
             pos  = region2.plot_position,
             size = region2.plot_size,
-            x_range = {0, 1000.0},
+            x_range = {0, 500.0},
             y_range = {0, 40.0}
         })
     end
