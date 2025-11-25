@@ -394,5 +394,6 @@ function love.draw()
     if resize then 
         mv:on_resize(ww,wh)
         love.window.setMode(ww, wh)
+        print(ww, wh)
     end
 end
